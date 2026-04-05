@@ -1,0 +1,2723 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SARC — Sistema Avanzado de Rutas Comerciales</title>
+
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <!-- XLSX -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- QRCode -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <!-- Leaflet.js — Mapas GPS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#4F46E5">
+
+  <style>
+    :root {
+      --sarc-primary: #4F46E5;
+      --sarc-primary-dark: #3730A3;
+      --sarc-accent: #06B6D4;
+      --sarc-success: #10B981;
+      --sarc-warning: #F59E0B;
+      --sarc-danger: #EF4444;
+      --sarc-surface: #F8FAFC;
+      --sarc-card: #FFFFFF;
+      --sarc-border: #E2E8F0;
+      --sarc-text: #1E293B;
+      --sarc-muted: #64748B;
+      --sarc-sidebar-w: 260px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--sarc-surface);
+      color: var(--sarc-text);
+      min-height: 100vh;
+    }
+
+    /* ═══════════════════ LOGIN ═══════════════════ */
+    #loginScreen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%);
+      padding: 20px;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 32px 80px rgba(79,70,229,.25);
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 440px;
+      animation: fadeUp .5s ease-out;
+    }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:none; } }
+    .login-logo {
+      width: 64px; height: 64px;
+      background: linear-gradient(135deg,#4F46E5,#06B6D4);
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 30px; margin: 0 auto 20px; color:#fff;
+    }
+    .login-card h1 { font-size:1.6rem; font-weight:800; text-align:center; color:var(--sarc-text); }
+    .login-card .subtitle { text-align:center; color:var(--sarc-muted); font-size:.88rem; margin-bottom:28px; }
+    .input-icon-wrap { position:relative; }
+    .input-icon-wrap .bi { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--sarc-muted); font-size:1rem; }
+    .input-icon-wrap input { padding-left:42px; }
+    .form-control, .form-select {
+      border:1.5px solid var(--sarc-border);
+      border-radius:10px;
+      padding:.65rem 1rem;
+      font-family:'Plus Jakarta Sans',sans-serif;
+      font-size:.9rem;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--sarc-primary);
+      box-shadow: 0 0 0 3px rgba(79,70,229,.12);
+      outline: none;
+    }
+    .btn-sarc-primary {
+      background: linear-gradient(135deg,#4F46E5,#06B6D4);
+      border: none; color:#fff; font-weight:700;
+      border-radius:10px; padding:.7rem 1.5rem;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn-sarc-primary:hover { opacity:.9; transform:translateY(-1px); color:#fff; }
+    .login-divider { text-align:center; color:var(--sarc-muted); font-size:.82rem; margin:16px 0; }
+    .login-link { color:var(--sarc-primary); font-weight:600; cursor:pointer; text-decoration:none; }
+    .login-link:hover { text-decoration:underline; }
+
+    /* ═══════════════════ LAYOUT ═══════════════════ */
+    #mainApp { display:none; }
+    .app-layout { display:flex; min-height:100vh; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sarc-sidebar-w);
+      background: #fff;
+      border-right: 1.5px solid var(--sarc-border);
+      display: flex; flex-direction: column;
+      position: fixed; top:0; left:0; bottom:0; z-index:200;
+      transition: transform .3s ease;
+    }
+    .sidebar-header {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid var(--sarc-border);
+      display: flex; align-items:center; gap:12px;
+    }
+    .sidebar-logo {
+      width:42px; height:42px;
+      background: linear-gradient(135deg,#4F46E5,#06B6D4);
+      border-radius:12px;
+      display:flex; align-items:center; justify-content:center;
+      color:#fff; font-size:20px; flex-shrink:0;
+    }
+    .sidebar-brand { font-weight:800; font-size:1.1rem; color:var(--sarc-text); }
+    .sidebar-brand small { display:block; font-size:.7rem; font-weight:500; color:var(--sarc-muted); }
+    .sidebar-nav { flex:1; overflow-y:auto; padding:12px 12px; }
+    .sidebar-section { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--sarc-muted); padding:12px 8px 6px; }
+    .sidebar-item {
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px; border-radius:10px;
+      cursor:pointer; color:var(--sarc-muted);
+      font-size:.88rem; font-weight:600;
+      transition: background .15s, color .15s;
+      text-decoration:none; margin-bottom:2px;
+      border:none; background:none; width:100%;
+    }
+    .sidebar-item:hover { background:#F1F5F9; color:var(--sarc-text); }
+    .sidebar-item.active { background:rgba(79,70,229,.1); color:var(--sarc-primary); }
+    .sidebar-item .bi { font-size:1.1rem; width:22px; }
+    .sidebar-item .nav-badge {
+      margin-left:auto; background:var(--sarc-primary);
+      color:#fff; font-size:.65rem; border-radius:20px; padding:1px 7px;
+    }
+    .sidebar-footer {
+      padding:16px 12px;
+      border-top:1px solid var(--sarc-border);
+    }
+
+    /* ── User dropdown in sidebar ── */
+    .user-menu-btn {
+      display:flex; align-items:center; gap:10px;
+      width:100%; border:none; background:#F8FAFC;
+      border-radius:12px; padding:10px 12px; cursor:pointer;
+      transition: background .15s;
+    }
+    .user-menu-btn:hover { background:#F1F5F9; }
+    .user-avatar {
+      width:36px; height:36px; border-radius:10px;
+      background: linear-gradient(135deg,#4F46E5,#06B6D4);
+      display:flex; align-items:center; justify-content:center;
+      color:#fff; font-size:14px; font-weight:700; flex-shrink:0;
+    }
+    .user-info { flex:1; text-align:left; min-width:0; }
+    .user-info .uname { font-size:.85rem; font-weight:700; color:var(--sarc-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .user-info .urole { font-size:.72rem; color:var(--sarc-muted); }
+    .role-badge-admin    { color:#4F46E5; background:rgba(79,70,229,.1); border-radius:6px; padding:1px 6px; font-size:.68rem; font-weight:700; }
+    .role-badge-supervisor { color:#F59E0B; background:rgba(245,158,11,.1); border-radius:6px; padding:1px 6px; font-size:.68rem; font-weight:700; }
+    .role-badge-asesor   { color:#10B981; background:rgba(16,185,129,.1); border-radius:6px; padding:1px 6px; font-size:.68rem; font-weight:700; }
+
+    /* Dropdown menú usuario */
+    .user-dropdown-menu {
+      display:none; position:absolute; bottom:calc(100% + 8px); left:0; right:0;
+      background:#fff; border:1.5px solid var(--sarc-border); border-radius:14px;
+      box-shadow:0 8px 32px rgba(0,0,0,.12); overflow:hidden; z-index:9999;
+    }
+    .user-dropdown-menu.show { display:block; animation:fadeUp .15s ease-out; }
+    .user-dropdown-menu .udrop-header {
+      padding:14px 16px 10px; border-bottom:1px solid var(--sarc-border);
+      font-size:.78rem; color:var(--sarc-muted);
+    }
+    .user-dropdown-menu a, .user-dropdown-menu button {
+      display:flex; align-items:center; gap:10px;
+      padding:10px 16px; font-size:.87rem; font-weight:600;
+      color:var(--sarc-text); text-decoration:none;
+      background:none; border:none; width:100%; cursor:pointer;
+      transition:background .12s;
+    }
+    .user-dropdown-menu a:hover, .user-dropdown-menu button:hover { background:#F8FAFC; }
+    .user-dropdown-menu .udrop-divider { border-top:1px solid var(--sarc-border); margin:4px 0; }
+    .user-dropdown-menu .udrop-danger { color:var(--sarc-danger) !important; }
+    .user-dropdown-menu .bi { font-size:1rem; width:20px; }
+
+    /* Overlay sidebar mobile */
+    .sidebar-overlay {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:199;
+    }
+    .sidebar-overlay.show { display:block; }
+
+    /* ── Main content ── */
+    .main-content {
+      margin-left: var(--sarc-sidebar-w);
+      flex:1; min-height:100vh; display:flex; flex-direction:column;
+    }
+    .topbar {
+      background:#fff; border-bottom:1.5px solid var(--sarc-border);
+      padding:0 24px; height:60px;
+      display:flex; align-items:center; gap:16px;
+      position:sticky; top:0; z-index:100;
+    }
+    .topbar-hamburger {
+      display:none; border:none; background:none; font-size:1.3rem;
+      color:var(--sarc-text); cursor:pointer; padding:4px;
+    }
+    .topbar-title { font-weight:800; font-size:1.1rem; flex:1; }
+    .topbar-actions { display:flex; align-items:center; gap:8px; }
+    .page-body { padding:24px; flex:1; }
+
+    /* ═══════════════════ TABS ═══════════════════ */
+    .tab-content-pane { display:none; }
+    .tab-content-pane.active { display:block; animation:fadeIn .2s ease; }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+    /* ═══════════════════ STATS ═══════════════════ */
+    .stat-card {
+      background:#fff; border-radius:16px; padding:20px 22px;
+      border:1.5px solid var(--sarc-border);
+      display:flex; align-items:center; gap:16px;
+    }
+    .stat-icon {
+      width:48px; height:48px; border-radius:14px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.3rem; flex-shrink:0;
+    }
+    .stat-icon.blue   { background:rgba(79,70,229,.1);  color:#4F46E5; }
+    .stat-icon.cyan   { background:rgba(6,182,212,.1);  color:#06B6D4; }
+    .stat-icon.green  { background:rgba(16,185,129,.1); color:#10B981; }
+    .stat-icon.orange { background:rgba(245,158,11,.1); color:#F59E0B; }
+    .stat-icon.red    { background:rgba(239,68,68,.1);  color:#EF4444; }
+    .stat-value { font-size:1.7rem; font-weight:800; line-height:1; color:var(--sarc-text); }
+    .stat-label { font-size:.8rem; color:var(--sarc-muted); font-weight:600; margin-top:4px; }
+
+    /* ═══════════════════ CARDS ═══════════════════ */
+    .sarc-card {
+      background:#fff; border-radius:16px;
+      border:1.5px solid var(--sarc-border);
+      overflow:hidden;
+    }
+    .sarc-card-header {
+      padding:16px 20px; border-bottom:1px solid var(--sarc-border);
+      display:flex; align-items:center; justify-content:space-between;
+      font-weight:700; font-size:.95rem;
+    }
+    .sarc-card-body { padding:20px; }
+
+    /* ═══════════════════ DATA CARDS ═══════════════════ */
+    .data-card {
+      background:#fff; border-radius:14px; border:1.5px solid var(--sarc-border);
+      padding:16px 18px; margin-bottom:12px;
+      transition: box-shadow .15s;
+    }
+    .data-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.07); }
+    .data-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .data-card-title { font-weight:700; font-size:.95rem; }
+    .data-card-meta { display:flex; flex-wrap:wrap; gap:8px 20px; }
+    .meta-item { font-size:.8rem; color:var(--sarc-muted); }
+    .meta-item strong { color:var(--sarc-text); }
+    .data-card-actions { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
+
+    /* ═══════════════════ BADGES ═══════════════════ */
+    .sarc-badge {
+      display:inline-flex; align-items:center; gap:4px;
+      padding:3px 10px; border-radius:20px; font-size:.72rem; font-weight:700;
+    }
+    .sarc-badge.success  { background:rgba(16,185,129,.12); color:#059669; }
+    .sarc-badge.danger   { background:rgba(239,68,68,.12);  color:#DC2626; }
+    .sarc-badge.warning  { background:rgba(245,158,11,.12); color:#D97706; }
+    .sarc-badge.info     { background:rgba(6,182,212,.12);  color:#0891B2; }
+    .sarc-badge.primary  { background:rgba(79,70,229,.12);  color:#4338CA; }
+    .sarc-badge.secondary{ background:rgba(100,116,139,.12);color:#475569; }
+
+    /* ═══════════════════ BUTTONS ═══════════════════ */
+    .btn-xs { padding:.25rem .6rem; font-size:.75rem; border-radius:8px; font-weight:600; }
+    .btn-outline-sarc {
+      border:1.5px solid var(--sarc-primary); color:var(--sarc-primary);
+      background:transparent; border-radius:10px; font-weight:600;
+    }
+    .btn-outline-sarc:hover { background:rgba(79,70,229,.08); color:var(--sarc-primary); }
+    .btn-sarc {
+      background:var(--sarc-primary); border:none; color:#fff;
+      border-radius:10px; font-weight:600;
+    }
+    .btn-sarc:hover { background:var(--sarc-primary-dark); color:#fff; }
+
+    /* ═══════════════════ ZONA SELECT ═══════════════════ */
+    .zona-select-wrapper select option { padding:8px; }
+
+    /* ═══════════════════ TABLES ═══════════════════ */
+    .sarc-table { width:100%; border-collapse:separate; border-spacing:0; }
+    .sarc-table thead th {
+      padding:10px 14px; font-size:.78rem; font-weight:700;
+      text-transform:uppercase; letter-spacing:.05em; color:var(--sarc-muted);
+      border-bottom:2px solid var(--sarc-border); background:#F8FAFC;
+    }
+    .sarc-table tbody td { padding:12px 14px; font-size:.88rem; border-bottom:1px solid var(--sarc-border); vertical-align:middle; }
+    .sarc-table tbody tr:last-child td { border-bottom:none; }
+    .sarc-table tbody tr:hover td { background:#FAFBFF; }
+    .table-responsive { overflow-x:auto; border-radius:14px; border:1.5px solid var(--sarc-border); }
+
+    /* ═══════════════════ NOTIFICACIONES ═══════════════════ */
+    #notifContainer { position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:10px; max-width:340px; }
+    .notif {
+      background:#fff; border-radius:12px; border:1.5px solid var(--sarc-border);
+      box-shadow:0 8px 24px rgba(0,0,0,.12);
+      padding:12px 16px; display:flex; gap:10px; align-items:flex-start;
+      animation:slideIn .3s ease; font-size:.85rem;
+    }
+    @keyframes slideIn { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:none} }
+    .notif-icon { font-size:1.1rem; margin-top:1px; }
+    .notif-title { font-weight:700; margin-bottom:2px; }
+    .notif-msg { color:var(--sarc-muted); font-size:.8rem; }
+    .notif.success .notif-icon { color:#10B981; }
+    .notif.error   .notif-icon { color:#EF4444; }
+    .notif.info    .notif-icon { color:#4F46E5; }
+    .notif.warning .notif-icon { color:#F59E0B; }
+
+    /* ═══════════════════ EMPTY STATE ═══════════════════ */
+    .empty-state { text-align:center; padding:48px 20px; color:var(--sarc-muted); }
+    .empty-state i { font-size:2.5rem; display:block; margin-bottom:12px; }
+
+    /* ═══════════════════ MODALES ═══════════════════ */
+    .modal-backdrop-sarc {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1050;
+      align-items:center; justify-content:center; padding:16px;
+    }
+    .modal-backdrop-sarc.show { display:flex; }
+    .modal-box {
+      background:#fff; border-radius:20px; width:100%; max-width:520px;
+      max-height:90vh; overflow-y:auto;
+      box-shadow:0 24px 64px rgba(0,0,0,.2); animation:fadeUp .25s ease;
+    }
+    .modal-box.lg { max-width:720px; }
+    .modal-hdr { padding:20px 24px; border-bottom:1px solid var(--sarc-border); display:flex; align-items:center; justify-content:space-between; }
+    .modal-hdr h5 { font-weight:800; font-size:1rem; margin:0; }
+    .modal-bdy { padding:24px; }
+    .modal-ftr { padding:16px 24px; border-top:1px solid var(--sarc-border); display:flex; justify-content:flex-end; gap:8px; }
+    .modal-close-btn { background:none; border:none; font-size:1.2rem; color:var(--sarc-muted); cursor:pointer; }
+
+    /* ═══════════════════ SECTION HEADER ═══════════════════ */
+    .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
+    .section-title { font-size:1.15rem; font-weight:800; }
+    .section-subtitle { font-size:.8rem; color:var(--sarc-muted); font-weight:400; margin-left:8px; }
+
+    /* ═══════════════════ CHART CONTAINER ═══════════════════ */
+    .chart-wrap { background:#fff; border-radius:16px; border:1.5px solid var(--sarc-border); padding:20px; }
+    .chart-wrap h6 { font-weight:700; font-size:.88rem; margin-bottom:16px; color:var(--sarc-muted); text-transform:uppercase; letter-spacing:.05em; }
+
+    /* ═══════════════════ OFFLINE BANNER ═══════════════════ */
+    #offlineBar { display:none; position:fixed; top:0; left:0; right:0; background:var(--sarc-danger); color:#fff; padding:8px 20px; text-align:center; z-index:99999; font-size:.85rem; font-weight:600; }
+
+    /* ═══════════════════ RESPONSIVE ═══════════════════ */
+    @media(max-width:768px){
+      .sidebar { transform:translateX(-100%); }
+      .sidebar.open { transform:translateX(0); }
+      .main-content { margin-left:0; }
+      .topbar-hamburger { display:block; }
+      .page-body { padding:16px; }
+      .stat-card { padding:14px 16px; }
+      .stat-value { font-size:1.4rem; }
+      .login-card { padding:32px 20px; }
+      .user-dropdown-menu { left:0; right:0; bottom:calc(100% + 4px); }
+      .modal-box { max-width:100%; border-radius:16px 16px 0 0; margin-top:auto; }
+      .modal-backdrop-sarc { align-items:flex-end; padding:0; }
+    }
+    @media(max-width:576px){
+      .data-card-actions { gap:6px; }
+      .btn-xs { font-size:.7rem; }
+    }
+
+    /* ═══════════════════ PROFILE MODAL ═══════════════════ */
+    .profile-avatar-lg {
+      width:72px; height:72px; border-radius:20px;
+      background:linear-gradient(135deg,#4F46E5,#06B6D4);
+      display:flex; align-items:center; justify-content:center;
+      color:#fff; font-size:28px; font-weight:800; margin:0 auto 16px;
+    }
+    .about-logo { font-size:3rem; text-align:center; margin-bottom:8px; }
+
+    /* ═══════════════════ SIDEBAR RELATIVE ═══════════════════ */
+    .sidebar-footer { position:relative; }
+
+    /* Selector de zona bonito */
+    .zona-badges { display:flex; flex-wrap:wrap; gap:6px; }
+    .zona-badge-opt {
+      padding:5px 12px; border-radius:20px; border:1.5px solid var(--sarc-border);
+      font-size:.78rem; font-weight:600; cursor:pointer; background:#fff;
+      transition:all .15s; color:var(--sarc-muted);
+    }
+    .zona-badge-opt:hover { border-color:var(--sarc-primary); color:var(--sarc-primary); }
+    .zona-badge-opt.selected { background:var(--sarc-primary); color:#fff; border-color:var(--sarc-primary); }
+    /* ═══════════════════ GPS / VISITAS ═══════════════════ */
+    #gps-map { height: 420px; border-radius: 14px; border: 1.5px solid var(--sarc-border); z-index: 1; }
+    @media(max-width:768px){ #gps-map { height: 280px; } }
+
+    .visit-card {
+      background: #fff; border-radius: 14px; border: 1.5px solid var(--sarc-border);
+      padding: 16px 18px; margin-bottom: 10px; transition: box-shadow .15s;
+    }
+    .visit-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.07); }
+    .visit-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+
+    /* Estado de visita */
+    .visit-status { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px; font-size:.75rem; font-weight:700; }
+    .visit-status.pendiente  { background:rgba(245,158,11,.12); color:#D97706; }
+    .visit-status.en-visita  { background:rgba(79,70,229,.15);  color:#4338CA; animation: pulseVisit 1.8s infinite; }
+    .visit-status.realizada  { background:rgba(16,185,129,.12); color:#059669; }
+    .visit-status.sin-visita { background:rgba(100,116,139,.1); color:#475569; }
+    @keyframes pulseVisit {
+      0%,100% { box-shadow: 0 0 0 0 rgba(79,70,229,.4); }
+      50%      { box-shadow: 0 0 0 6px rgba(79,70,229,0); }
+    }
+
+    /* Botones de acción GPS */
+    .btn-gps-start {
+      background: linear-gradient(135deg,#4F46E5,#06B6D4); border:none; color:#fff;
+      border-radius:10px; font-weight:700; font-size:.82rem; padding:.45rem 1rem;
+      transition: opacity .2s, transform .1s; display:inline-flex; align-items:center; gap:6px;
+    }
+    .btn-gps-start:hover { opacity:.9; transform:translateY(-1px); color:#fff; }
+    .btn-gps-end {
+      background: linear-gradient(135deg,#10B981,#059669); border:none; color:#fff;
+      border-radius:10px; font-weight:700; font-size:.82rem; padding:.45rem 1rem;
+      transition: opacity .2s, transform .1s; display:inline-flex; align-items:center; gap:6px;
+    }
+    .btn-gps-end:hover { opacity:.9; color:#fff; }
+
+    /* Panel GPS activo */
+    .gps-active-bar {
+      background: linear-gradient(135deg,#4F46E5,#06B6D4);
+      border-radius:14px; padding:14px 18px; color:#fff; margin-bottom:16px;
+      display:none; align-items:center; gap:14px; flex-wrap:wrap;
+    }
+    .gps-active-bar.show { display:flex; }
+    .gps-pulse-dot {
+      width:12px; height:12px; border-radius:50%; background:#fff; flex-shrink:0;
+      animation: pulseDot 1.2s infinite;
+    }
+    @keyframes pulseDot {
+      0%,100%{ opacity:1; transform:scale(1); }
+      50%    { opacity:.5; transform:scale(.7); }
+    }
+    .gps-coords { font-family:'DM Mono',monospace; font-size:.78rem; opacity:.85; }
+    .gps-timer  { font-size:1.2rem; font-weight:800; font-family:'DM Mono',monospace; min-width:60px; }
+
+    /* Timeline de visitas */
+    .visit-timeline { padding-left: 8px; }
+    .visit-tl-item {
+      display:flex; gap:14px; padding: 10px 0;
+      border-left: 2px solid var(--sarc-border); padding-left: 20px; position:relative;
+      margin-left: 6px;
+    }
+    .visit-tl-item::before {
+      content:''; position:absolute; left:-7px; top:14px;
+      width:12px; height:12px; border-radius:50%; border:2px solid #fff;
+      background: var(--sarc-border);
+    }
+    .visit-tl-item.done::before  { background: #10B981; border-color:#10B981; }
+    .visit-tl-item.active::before{ background: #4F46E5; border-color:#4F46E5; animation: pulseDot 1.2s infinite; }
+    .visit-tl-item.pending::before{ background: #F59E0B; border-color:#F59E0B; }
+    .visit-tl-time { font-size:.72rem; font-family:'DM Mono',monospace; color:var(--sarc-muted); min-width:52px; margin-top:2px; }
+    .visit-tl-content { flex:1; }
+    .visit-tl-name { font-weight:700; font-size:.88rem; }
+    .visit-tl-meta { font-size:.76rem; color:var(--sarc-muted); margin-top:2px; }
+
+    /* Mapa marcador personalizado */
+    .custom-marker {
+      background: #4F46E5; color:#fff; border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg); width:32px; height:32px;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow: 0 3px 12px rgba(79,70,229,.5); border:2px solid #fff;
+    }
+    .custom-marker span { transform:rotate(45deg); font-size:14px; }
+    .custom-marker.active-visit { background:#10B981; box-shadow:0 3px 12px rgba(16,185,129,.6); }
+    .custom-marker.done-visit   { background:#64748B; }
+
+    /* Distancia badge */
+    .dist-badge { font-size:.7rem; background:rgba(79,70,229,.1); color:#4338CA; padding:2px 8px; border-radius:10px; font-weight:600; }
+
+    /* Accuracy ring */
+    .acc-ring { font-size:.72rem; color:var(--sarc-muted); display:flex; align-items:center; gap:4px; }
+  </style>
+</head>
+<body>
+
+<div id="offlineBar">📵 Sin conexión — Algunas funciones no están disponibles</div>
+<div id="notifContainer"></div>
+
+<!-- ═══════════════════════════════════ LOGIN ═══════════════════════════════════ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🗺️</div>
+    <h1>SARC</h1>
+    <p class="subtitle">Sistema Avanzado de Rutas Comerciales</p>
+
+    <div id="loginAlert" class="alert d-none mb-3" role="alert"></div>
+
+    <!-- LOGIN FORM -->
+    <div id="loginFormWrap">
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:.85rem">Usuario</label>
+        <div class="input-icon-wrap">
+          <i class="bi bi-person"></i>
+          <input type="text" id="loginUsername" class="form-control" placeholder="Ingrese su usuario">
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:.85rem">Contraseña</label>
+        <div class="input-icon-wrap">
+          <i class="bi bi-lock"></i>
+          <input type="password" id="loginPassword" class="form-control" placeholder="Ingrese su contraseña">
+        </div>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mb-3" style="font-size:.83rem">
+        <label class="d-flex align-items-center gap-2 cursor-pointer">
+          <input type="checkbox" id="rememberMe" class="form-check-input m-0"> Recordarme
+        </label>
+        <a href="#" class="login-link" onclick="showLoginPanel('reset')">¿Olvidó su contraseña?</a>
+      </div>
+      <button class="btn btn-sarc-primary w-100 py-2" onclick="doLogin()">
+        <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
+      </button>
+      <p class="text-center mt-3" style="font-size:.83rem; color:var(--sarc-muted)">
+        ¿No tienes cuenta? <a href="#" class="login-link" onclick="showLoginPanel('register')">Registrarse</a>
+      </p>
+      <div class="text-center mt-2" style="font-size:.72rem; color:#aaa;">
+      </div>
+    </div>
+
+    <!-- REGISTRO FORM -->
+    <div id="registerFormWrap" style="display:none">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <button class="btn btn-sm btn-light" onclick="showLoginPanel('login')"><i class="bi bi-arrow-left"></i></button>
+        <strong>Crear cuenta nueva</strong>
+      </div>
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Usuario *</label>
+          <input type="text" id="regUsername" class="form-control" placeholder="Nombre de usuario">
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Nombre completo *</label>
+          <input type="text" id="regNombre" class="form-control" placeholder="Nombre completo">
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Email *</label>
+          <input type="email" id="regEmail" class="form-control" placeholder="email@empresa.com">
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Contraseña *</label>
+          <input type="password" id="regPassword" class="form-control" placeholder="Mínimo 6 caracteres">
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Confirmar contraseña *</label>
+          <input type="password" id="regConfirmPw" class="form-control" placeholder="Repita la contraseña">
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Rol *</label>
+          <select id="regRole" class="form-select">
+            <option value="asesor">Asesor</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-sarc-primary w-100 mt-3 py-2" onclick="doRegister()">
+        <i class="bi bi-person-plus me-2"></i>Registrarse
+      </button>
+    </div>
+
+    <!-- RESET FORM -->
+    <div id="resetFormWrap" style="display:none">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <button class="btn btn-sm btn-light" onclick="showLoginPanel('login')"><i class="bi bi-arrow-left"></i></button>
+        <strong>Recuperar contraseña</strong>
+      </div>
+      <p style="font-size:.85rem; color:var(--sarc-muted); margin-bottom:20px;">
+        Ingresa tu email registrado y te enviaremos instrucciones para restablecer tu contraseña.
+      </p>
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:.83rem">Email registrado *</label>
+        <div class="input-icon-wrap">
+          <i class="bi bi-envelope"></i>
+          <input type="email" id="resetEmail" class="form-control" placeholder="email@empresa.com">
+        </div>
+      </div>
+      <button class="btn btn-sarc-primary w-100 py-2" onclick="doReset()">
+        <i class="bi bi-send me-2"></i>Enviar instrucciones
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ MAIN APP ═══════════════════════════════════ -->
+<div id="mainApp">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="app-layout">
+
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">🗺️</div>
+        <div class="sidebar-brand">SARC <small>Rutas Comerciales</small></div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">Principal</div>
+        <button class="sidebar-item active" onclick="switchTab('dashboard',this)">
+          <i class="bi bi-grid-1x2-fill"></i> Dashboard
+        </button>
+        <button class="sidebar-item" onclick="switchTab('rutas',this)">
+          <i class="bi bi-map-fill"></i> Rutas
+        </button>
+        <button class="sidebar-item" onclick="switchTab('visitas',this)">
+          <i class="bi bi-geo-alt-fill"></i> Visitas GPS
+          <span class="nav-badge" id="visitasBadge" style="display:none">0</span>
+        </button>
+        <button class="sidebar-item" onclick="switchTab('asesores',this)">
+          <i class="bi bi-people-fill"></i> Asesores
+        </button>
+        <button class="sidebar-item" onclick="switchTab('clientes',this)">
+          <i class="bi bi-buildings-fill"></i> Clientes
+        </button>
+
+        <div class="sidebar-section">Análisis</div>
+        <button class="sidebar-item" onclick="switchTab('satisfaccion',this)">
+          <i class="bi bi-star-fill"></i> Satisfacción
+        </button>
+        <button class="sidebar-item" onclick="switchTab('reportes',this)">
+          <i class="bi bi-bar-chart-fill"></i> Reportes
+        </button>
+
+        <div class="sidebar-section admin-only d-none">Administración</div>
+        <button class="sidebar-item admin-only d-none" onclick="switchTab('usuarios',this)">
+          <i class="bi bi-shield-lock-fill"></i> Gestión Usuarios
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <!-- User menu button -->
+        <div style="position:relative">
+          <button class="user-menu-btn" id="userMenuBtn" onclick="toggleUserMenu()">
+            <div class="user-avatar" id="sidebarAvatar">U</div>
+            <div class="user-info">
+              <div class="uname" id="sidebarUserName">Usuario</div>
+              <div class="urole"><span id="sidebarRoleBadge" class="role-badge-asesor">Asesor</span></div>
+            </div>
+            <i class="bi bi-chevron-up" style="font-size:.75rem; color:var(--sarc-muted)"></i>
+          </button>
+
+          <!-- Dropdown -->
+          <div class="user-dropdown-menu" id="userDropdown">
+            <div class="udrop-header">
+              <div id="dropUserEmail" style="font-weight:600; color:var(--sarc-text); font-size:.85rem">usuario@sarc.com</div>
+              <div id="dropUserRol">Rol</div>
+            </div>
+            <a href="#" onclick="openModal('modalPerfil'); closeUserMenu()"><i class="bi bi-person-circle"></i> Mi Perfil</a>
+            <a href="#" onclick="openModal('modalCambiarPw'); closeUserMenu()"><i class="bi bi-key-fill"></i> Cambiar Contraseña</a>
+
+            <!-- Opciones por rol -->
+            <div id="adminMenuItems" class="d-none">
+              <div class="udrop-divider"></div>
+              <a href="#" onclick="switchTab('configuracion',null); closeUserMenu()"><i class="bi bi-gear-fill"></i> Configuración del Sistema</a>
+              <a href="#" onclick="switchTab('usuarios',null); closeUserMenu()"><i class="bi bi-people-fill"></i> Gestión de Usuarios</a>
+            </div>
+            <div id="supervisorMenuItems" class="d-none">
+              <div class="udrop-divider"></div>
+              <a href="#" onclick="switchTab('reportes',null); closeUserMenu()"><i class="bi bi-graph-up-arrow"></i> Ver Reportes</a>
+              <a href="#" onclick="switchTab('asesores',null); closeUserMenu()"><i class="bi bi-people"></i> Supervisar Asesores</a>
+            </div>
+            <div id="asesorMenuItems" class="d-none">
+              <div class="udrop-divider"></div>
+              <a href="#" onclick="switchTab('rutas',null); closeUserMenu()"><i class="bi bi-map"></i> Mis Rutas</a>
+              <a href="#" onclick="switchTab('clientes',null); closeUserMenu()"><i class="bi bi-buildings"></i> Mis Clientes</a>
+            </div>
+
+            <div class="udrop-divider"></div>
+            <a href="#" onclick="openModal('modalAcerca'); closeUserMenu()"><i class="bi bi-info-circle-fill"></i> Acerca de...</a>
+            <div class="udrop-divider"></div>
+            <button onclick="logout()" class="udrop-danger"><i class="bi bi-box-arrow-right"></i> Cerrar Sesión</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── MAIN CONTENT ── -->
+    <div class="main-content">
+      <div class="topbar">
+        <button class="topbar-hamburger" onclick="openSidebar()"><i class="bi bi-list"></i></button>
+        <div class="topbar-title" id="topbarTitle">Dashboard</div>
+        <div class="topbar-actions">
+          <button class="btn btn-sm btn-outline-sarc d-none d-md-inline-flex" onclick="openModal('modalPerfil')">
+            <i class="bi bi-person me-1"></i><span id="topbarUser">Usuario</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="page-body">
+
+        <!-- ── DASHBOARD ── -->
+        <div id="tab-dashboard" class="tab-content-pane active">
+          <div class="section-header">
+            <div>
+              <div class="section-title">Panel de Control</div>
+              <small class="text-muted">Resumen general del sistema</small>
+            </div>
+          </div>
+          <div class="row g-3 mb-4" id="statsGrid">
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="stat-card"><div class="stat-icon blue"><i class="bi bi-people-fill"></i></div><div><div class="stat-value" id="st1">0</div><div class="stat-label">Asesores Activos</div></div></div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="stat-card"><div class="stat-icon cyan"><i class="bi bi-buildings-fill"></i></div><div><div class="stat-value" id="st2">0</div><div class="stat-label">Clientes Activos</div></div></div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="stat-card"><div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="st3">0</div><div class="stat-label">Rutas Completadas</div></div></div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="stat-card"><div class="stat-icon orange"><i class="bi bi-clock-fill"></i></div><div><div class="stat-value" id="st4">0</div><div class="stat-label">Rutas Pendientes</div></div></div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="stat-card"><div class="stat-icon blue"><i class="bi bi-map-fill"></i></div><div><div class="stat-value" id="st5">0</div><div class="stat-label">Total Rutas</div></div></div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="stat-card"><div class="stat-icon orange"><i class="bi bi-star-fill"></i></div><div><div class="stat-value" id="st6">N/A</div><div class="stat-label">Satisfacción Prom.</div></div></div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="stat-card" style="cursor:pointer" onclick="switchTab('visitas',null)">
+                <div class="stat-icon green"><i class="bi bi-geo-alt-fill"></i></div>
+                <div>
+                  <div class="stat-value" id="st7">0</div>
+                  <div class="stat-label">Visitas Hoy</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-lg-6"><div class="chart-wrap"><h6>Rutas por Estado</h6><canvas id="rutasChart" height="220"></canvas></div></div>
+            <div class="col-lg-6"><div class="chart-wrap"><h6>Rendimiento de Asesores</h6><canvas id="asesoresChart" height="220"></canvas></div></div>
+          </div>
+          <div class="sarc-card mt-3">
+            <div class="sarc-card-header"><span><i class="bi bi-activity me-2"></i>Actividad Reciente</span></div>
+            <div class="sarc-card-body"><div id="recentActivity"></div></div>
+          </div>
+          <div class="sarc-card mt-3">
+            <div class="sarc-card-header">
+              <span><i class="bi bi-geo-alt-fill me-2" style="color:#10B981"></i>Visitas GPS — Hoy</span>
+              <button class="btn btn-xs btn-outline-sarc" onclick="switchTab('visitas',null)"><i class="bi bi-map me-1"></i>Ir al módulo</button>
+            </div>
+            <div class="sarc-card-body p-0">
+              <div id="dashVisitasGPS">
+                <div class="empty-state py-3"><i class="bi bi-geo-alt" style="font-size:1.6rem"></i><p style="font-size:.83rem">No hay visitas GPS registradas hoy</p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── RUTAS ── -->
+        <div id="tab-rutas" class="tab-content-pane">
+          <div class="section-header">
+            <div class="section-title"><i class="bi bi-map-fill me-2" style="color:var(--sarc-primary)"></i>Rutas</div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-sarc" onclick="exportRutasToExcel()"><i class="bi bi-download me-1"></i>Excel</button>
+              <button class="btn btn-sm btn-sarc" onclick="openModal('modalNuevaRuta')"><i class="bi bi-plus-lg me-1"></i>Nueva Ruta</button>
+            </div>
+          </div>
+          <!-- Filtros -->
+          <div class="sarc-card mb-3">
+            <div class="sarc-card-body py-3">
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <select id="filterRouteAsesor" class="form-select form-select-sm" onchange="renderRutas()">
+                    <option value="">Todos los asesores</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <select id="filterRouteEstado" class="form-select form-select-sm" onchange="renderRutas()">
+                    <option value="">Todos los estados</option>
+                    <option value="planificada">Planificada</option>
+                    <option value="en-progreso">En Progreso</option>
+                    <option value="completada">Completada</option>
+                    <option value="cancelada">Cancelada</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <input type="date" id="filterRouteFecha" class="form-control form-control-sm" onchange="renderRutas()">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="routesList"></div>
+        </div>
+
+        <!-- ── VISITAS GPS ── -->
+        <div id="tab-visitas" class="tab-content-pane">
+          <!-- Barra de visita activa -->
+          <div class="gps-active-bar" id="gpsActiveBar">
+            <div class="gps-pulse-dot"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:800;font-size:.92rem" id="gpsActiveClienteName">Visitando...</div>
+              <div class="gps-coords" id="gpsActiveCoords">Obteniendo ubicación...</div>
+            </div>
+            <div class="gps-timer" id="gpsTimer">00:00</div>
+            <button class="btn-gps-end" onclick="finalizarVisitaActiva()">
+              <i class="bi bi-stop-circle-fill"></i> Finalizar Visita
+            </button>
+          </div>
+
+          <div class="row g-3">
+            <!-- Columna izquierda: selector de ruta + lista de clientes -->
+            <div class="col-lg-5">
+              <div class="section-header mb-2">
+                <div class="section-title"><i class="bi bi-geo-alt-fill me-2" style="color:var(--sarc-primary)"></i>Visitas GPS</div>
+                <button class="btn btn-sm btn-outline-sarc" onclick="exportarVisitasExcel()">
+                  <i class="bi bi-download me-1"></i>Exportar
+                </button>
+              </div>
+
+              <!-- Selector ruta activa -->
+              <div class="sarc-card mb-3">
+                <div class="sarc-card-header"><i class="bi bi-map me-2"></i>Seleccionar Ruta de Hoy</div>
+                <div class="sarc-card-body">
+                  <select id="visitaRutaSelect" class="form-select mb-2" onchange="cargarClientesVisita()">
+                    <option value="">— Seleccione una ruta —</option>
+                  </select>
+                  <div id="visitaRutaInfo" class="d-none">
+                    <div class="d-flex gap-2 flex-wrap">
+                      <span class="sarc-badge info" id="visitaRutaZona"></span>
+                      <span class="sarc-badge warning" id="visitaRutaEstado"></span>
+                      <span class="sarc-badge secondary" id="visitaRutaFecha"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Resumen progreso -->
+              <div class="sarc-card mb-3 d-none" id="visitaProgressCard">
+                <div class="sarc-card-header">
+                  <span>Progreso de la Ruta</span>
+                  <span class="sarc-badge success" id="visitaProgressBadge">0/0</span>
+                </div>
+                <div class="sarc-card-body pb-2">
+                  <div class="progress mb-2" style="height:8px;border-radius:8px">
+                    <div class="progress-bar" id="visitaProgressBar" style="background:var(--sarc-primary);width:0%;border-radius:8px;transition:width .4s"></div>
+                  </div>
+                  <div class="d-flex justify-content-between" style="font-size:.75rem;color:var(--sarc-muted)">
+                    <span id="visitaProgressDone">0 realizadas</span>
+                    <span id="visitaProgressPending">0 pendientes</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Lista de clientes con acciones GPS -->
+              <div id="visitaClientesList">
+                <div class="empty-state"><i class="bi bi-map"></i><p>Seleccione una ruta para ver los clientes</p></div>
+              </div>
+            </div>
+
+            <!-- Columna derecha: mapa + timeline -->
+            <div class="col-lg-7">
+              <!-- Mapa Leaflet -->
+              <div class="sarc-card mb-3">
+                <div class="sarc-card-header">
+                  <span><i class="bi bi-map-fill me-2"></i>Mapa de Visitas</span>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="acc-ring" id="gpsAccuracy"><i class="bi bi-crosshair"></i> —</span>
+                    <button class="btn btn-xs btn-outline-sarc" onclick="centerMapOnMe()" title="Centrar en mi posición">
+                      <i class="bi bi-crosshair2"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="sarc-card-body p-2">
+                  <div id="gps-map"></div>
+                </div>
+              </div>
+
+              <!-- Resumen de visitas de la sesión -->
+              <div class="sarc-card mb-3 d-none" id="visitaResumenCard">
+                <div class="sarc-card-header">
+                  <span><i class="bi bi-bar-chart-steps me-2"></i>Resumen de Sesión</span>
+                  <button class="btn btn-xs btn-outline-sarc" onclick="exportarVisitasExcel()"><i class="bi bi-download me-1"></i>Excel</button>
+                </div>
+                <div class="sarc-card-body p-0">
+                  <table class="sarc-table" id="visitaResumenTable">
+                    <thead><tr><th>Cliente</th><th>Entrada</th><th>Salida</th><th>Duración</th><th>Resultado</th></tr></thead>
+                    <tbody id="visitaResumenBody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Timeline de visitas -->
+              <div class="sarc-card">
+                <div class="sarc-card-header"><i class="bi bi-clock-history me-2"></i>Historial de la Jornada</div>
+                <div class="sarc-card-body">
+                  <div class="visit-timeline" id="visitaTimeline">
+                    <div class="text-muted" style="font-size:.83rem">El historial aparecerá aquí cuando inicie visitas.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── ASESORES ── -->
+        <div id="tab-asesores" class="tab-content-pane">
+          <div class="section-header">
+            <div class="section-title"><i class="bi bi-people-fill me-2" style="color:var(--sarc-primary)"></i>Asesores</div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-sarc" onclick="exportAsesoresToExcel()"><i class="bi bi-download me-1"></i>Excel</button>
+              <button class="btn btn-sm btn-sarc" onclick="openModal('modalNuevoAsesor')"><i class="bi bi-plus-lg me-1"></i>Nuevo Asesor</button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <input type="text" id="searchAsesor" class="form-control" placeholder="🔍 Buscar asesor por nombre, email o teléfono..." oninput="renderAsesores()">
+          </div>
+          <div id="asesoresList"></div>
+        </div>
+
+        <!-- ── CLIENTES ── -->
+        <div id="tab-clientes" class="tab-content-pane">
+          <div class="section-header">
+            <div class="section-title"><i class="bi bi-buildings-fill me-2" style="color:var(--sarc-primary)"></i>Clientes</div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-sarc" onclick="exportClientesToExcel()"><i class="bi bi-download me-1"></i>Excel</button>
+              <button class="btn btn-sm btn-sarc" onclick="openModal('modalNuevoCliente')"><i class="bi bi-plus-lg me-1"></i>Nuevo Cliente</button>
+            </div>
+          </div>
+          <div class="sarc-card mb-3">
+            <div class="sarc-card-body py-3">
+              <div class="row g-2">
+                <div class="col-md-4"><input type="text" id="searchCliente" class="form-control form-control-sm" placeholder="🔍 Buscar cliente..." oninput="renderClientes()"></div>
+                <div class="col-md-4">
+                  <select id="filterClienteTipo" class="form-select form-select-sm" onchange="renderClientes()">
+                    <option value="">Todos los tipos</option>
+                    <option value="mayorista">Mayorista</option>
+                    <option value="minorista">Minorista</option>
+                    <option value="corporativo">Corporativo</option>
+                    <option value="distribuidor">Distribuidor</option>
+                    <option value="gobierno">Gobierno</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <select id="filterClienteEstado" class="form-select form-select-sm" onchange="renderClientes()">
+                    <option value="">Todos los estados</option>
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
+                    <option value="prospecto">Prospecto</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="clientesList"></div>
+        </div>
+
+        <!-- ── SATISFACCION ── -->
+        <div id="tab-satisfaccion" class="tab-content-pane">
+          <div class="section-header">
+            <div class="section-title"><i class="bi bi-star-fill me-2" style="color:#F59E0B"></i>Satisfacción del Cliente</div>
+            <button class="btn btn-sm btn-sarc" onclick="openModal('modalNuevaSatisfaccion')"><i class="bi bi-plus-lg me-1"></i>Registrar Encuesta</button>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-lg-8"><div id="satisfaccionList"></div></div>
+            <div class="col-lg-4"><div class="chart-wrap"><h6>Distribución Calificaciones</h6><canvas id="satisfaccionChart" height="240"></canvas></div></div>
+          </div>
+        </div>
+
+        <!-- ── REPORTES ── -->
+        <div id="tab-reportes" class="tab-content-pane">
+          <div class="section-header">
+            <div class="section-title"><i class="bi bi-bar-chart-fill me-2" style="color:var(--sarc-primary)"></i>Reportes y Análisis</div>
+            <button class="btn btn-sm btn-outline-sarc" onclick="exportReportesToExcel()"><i class="bi bi-download me-1"></i>Exportar</button>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-lg-6"><div class="chart-wrap"><h6>Clientes por Tipo</h6><canvas id="clientesTipoChart" height="220"></canvas></div></div>
+            <div class="col-lg-6"><div class="chart-wrap"><h6>Rendimiento Asesores</h6><canvas id="rendimientoChart" height="220"></canvas></div></div>
+          </div>
+          <div class="sarc-card mb-3">
+            <div class="sarc-card-header"><span>Resumen por Asesor</span></div>
+            <div class="sarc-card-body p-0"><div class="table-responsive"><div id="reporteAsesores"></div></div></div>
+          </div>
+          <div class="sarc-card">
+            <div class="sarc-card-header"><span>Resumen por Tipo de Cliente</span></div>
+            <div class="sarc-card-body p-0"><div class="table-responsive"><div id="reporteClientes"></div></div></div>
+          </div>
+        </div>
+
+        <!-- ── USUARIOS ── -->
+        <div id="tab-usuarios" class="tab-content-pane">
+          <div class="section-header">
+            <div class="section-title"><i class="bi bi-shield-lock-fill me-2" style="color:var(--sarc-primary)"></i>Gestión de Usuarios</div>
+            <button class="btn btn-sm btn-sarc" onclick="showLoginPanel=null; openModal('modalRegisterAdmin')"><i class="bi bi-person-plus me-1"></i>Nuevo Usuario</button>
+          </div>
+          <div id="usuariosList"></div>
+        </div>
+
+        <!-- ── CONFIGURACION ── -->
+        <div id="tab-configuracion" class="tab-content-pane">
+          <div class="section-title mb-4"><i class="bi bi-gear-fill me-2" style="color:var(--sarc-primary)"></i>Configuración del Sistema</div>
+          <div class="sarc-card mb-3">
+            <div class="sarc-card-header">Información General</div>
+            <div class="sarc-card-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" style="font-size:.85rem">Nombre del sistema</label>
+                  <input type="text" class="form-control" value="SARC - Sistema Avanzado de Rutas Comerciales">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" style="font-size:.85rem">Versión</label>
+                  <input type="text" class="form-control" value="2.0.0" readonly>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" style="font-size:.85rem">Zona horaria</label>
+                  <select class="form-select"><option>America/Bogota (UTC-5)</option></select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" style="font-size:.85rem">Idioma</label>
+                  <select class="form-select"><option>Español (Colombia)</option></select>
+                </div>
+              </div>
+              <button class="btn btn-sarc mt-3"><i class="bi bi-save me-2"></i>Guardar Configuración</button>
+            </div>
+          </div>
+          <div class="sarc-card mb-3">
+            <div class="sarc-card-header">Zonas Disponibles</div>
+            <div class="sarc-card-body">
+              <p class="text-muted" style="font-size:.85rem">Define las zonas comerciales disponibles en el sistema.</p>
+              <div class="d-flex gap-2 flex-wrap mb-3">
+                <span class="sarc-badge primary">Centro</span>
+                <span class="sarc-badge info">Norte</span>
+                <span class="sarc-badge success">Sur</span>
+                <span class="sarc-badge warning">Oriente</span>
+                <span class="sarc-badge secondary">Occidente</span>
+              </div>
+              <div class="input-group" style="max-width:300px">
+                <input type="text" class="form-control" placeholder="Nueva zona...">
+                <button class="btn btn-sarc">Agregar</button>
+              </div>
+            </div>
+          </div>
+          <div class="sarc-card">
+            <div class="sarc-card-header">Base de Datos</div>
+            <div class="sarc-card-body">
+              <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-sm btn-outline-sarc"><i class="bi bi-download me-1"></i>Exportar respaldo</button>
+                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash me-1"></i>Limpiar datos de demo</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /page-body -->
+    </div><!-- /main-content -->
+  </div>
+</div>
+
+<!-- ═══════════════════════ MODALES ═══════════════════════ -->
+
+<!-- Modal: Nueva Ruta -->
+<div class="modal-backdrop-sarc" id="modalNuevaRuta">
+  <div class="modal-box lg">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-map me-2"></i><span id="tituloModalRuta">Nueva Ruta</span></h5>
+      <button class="modal-close-btn" onclick="closeModal('modalNuevaRuta')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-bdy">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Asesor Comercial *</label>
+          <select id="routeAsesor" class="form-select"></select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Fecha *</label>
+          <input type="date" id="routeFecha" class="form-control">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Hora Inicio *</label>
+          <input type="time" id="routeHoraInicio" class="form-control">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Hora Fin</label>
+          <input type="time" id="routeHoraFin" class="form-control">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Zona / Región *</label>
+          <select id="routeZona" class="form-select">
+            <option value="">Seleccione una zona...</option>
+            <option value="Centro">Centro</option>
+            <option value="Norte">Norte</option>
+            <option value="Sur">Sur</option>
+            <option value="Oriente">Oriente</option>
+            <option value="Occidente">Occidente</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Estado *</label>
+          <select id="routeEstado" class="form-select">
+            <option value="planificada">Planificada</option>
+            <option value="en-progreso">En Progreso</option>
+            <option value="completada">Completada</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Vehículo / Placa</label>
+          <input type="text" id="routeVehiculo" class="form-control" placeholder="ABC-123">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Km Inicial</label>
+          <input type="number" id="routeKmInicial" class="form-control" min="0" placeholder="0">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Km Final</label>
+          <input type="number" id="routeKmFinal" class="form-control" min="0" placeholder="0">
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Clientes a Visitar *</label>
+          <select id="routeClientes" multiple class="form-select" style="min-height:110px"></select>
+          <small class="text-muted">Ctrl+clic para seleccionar múltiples</small>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Observaciones</label>
+          <textarea id="routeObservaciones" class="form-control" rows="2" placeholder="Notas adicionales..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-light" onclick="closeModal('modalNuevaRuta')">Cancelar</button>
+      <button class="btn btn-sarc" onclick="submitRuta()"><i class="bi bi-save me-1"></i>Guardar Ruta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nuevo Asesor -->
+<div class="modal-backdrop-sarc" id="modalNuevoAsesor">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-person-plus me-2"></i><span id="tituloModalAsesor">Nuevo Asesor</span></h5>
+      <button class="modal-close-btn" onclick="closeModal('modalNuevoAsesor')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-bdy">
+      <div class="row g-3">
+        <div class="col-12"><label class="form-label fw-semibold" style="font-size:.83rem">Nombre Completo *</label><input type="text" id="asesorNombre" class="form-control" placeholder="Juan Pérez"></div>
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Email *</label><input type="email" id="asesorEmail" class="form-control" placeholder="juan@empresa.com"></div>
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Teléfono *</label><input type="tel" id="asesorTelefono" class="form-control" placeholder="+57 300 123 4567"></div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Tipo *</label>
+          <select id="asesorTipo" class="form-select">
+            <option value="">Seleccione...</option>
+            <option value="junior">Junior</option>
+            <option value="senior">Senior</option>
+            <option value="especialista">Especialista</option>
+            <option value="gerente">Gerente de Zona</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Zona Asignada *</label>
+          <select id="asesorZona" class="form-select">
+            <option value="">Seleccione zona...</option>
+            <option value="Centro">Centro</option>
+            <option value="Norte">Norte</option>
+            <option value="Sur">Sur</option>
+            <option value="Oriente">Oriente</option>
+            <option value="Occidente">Occidente</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Estado *</label>
+          <select id="asesorEstado" class="form-select">
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+            <option value="vacaciones">Vacaciones</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-light" onclick="closeModal('modalNuevoAsesor')">Cancelar</button>
+      <button class="btn btn-sarc" onclick="submitAsesor()"><i class="bi bi-save me-1"></i>Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nuevo Cliente -->
+<div class="modal-backdrop-sarc" id="modalNuevoCliente">
+  <div class="modal-box lg">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-buildings me-2"></i><span id="tituloModalCliente">Nuevo Cliente</span></h5>
+      <button class="modal-close-btn" onclick="closeModal('modalNuevoCliente')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-bdy">
+      <div class="row g-3">
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Nombre / Razón Social *</label><input type="text" id="clienteNombre" class="form-control" placeholder="Empresa XYZ S.A.S."></div>
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">NIT / Documento *</label><input type="text" id="clienteNIT" class="form-control" placeholder="900123456-7"></div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Tipo de Cliente *</label>
+          <select id="clienteTipo" class="form-select">
+            <option value="">Seleccione...</option>
+            <option value="mayorista">Mayorista</option>
+            <option value="minorista">Minorista</option>
+            <option value="corporativo">Corporativo</option>
+            <option value="distribuidor">Distribuidor</option>
+            <option value="gobierno">Gobierno</option>
+          </select>
+        </div>
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Persona de Contacto *</label><input type="text" id="clienteContacto" class="form-control" placeholder="María García"></div>
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Email *</label><input type="email" id="clienteEmail" class="form-control" placeholder="contacto@cliente.com"></div>
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Teléfono *</label><input type="tel" id="clienteTelefono" class="form-control" placeholder="+57 601 234 5678"></div>
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Dirección *</label><input type="text" id="clienteDireccion" class="form-control" placeholder="Calle 123 #45-67"></div>
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Ciudad *</label><input type="text" id="clienteCiudad" class="form-control" placeholder="Medellín"></div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Zona *</label>
+          <select id="clienteZona" class="form-select">
+            <option value="">Seleccione zona...</option>
+            <option value="Centro">Centro</option>
+            <option value="Norte">Norte</option>
+            <option value="Sur">Sur</option>
+            <option value="Oriente">Oriente</option>
+            <option value="Occidente">Occidente</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Estado *</label>
+          <select id="clienteEstado" class="form-select">
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+            <option value="prospecto">Prospecto</option>
+          </select>
+        </div>
+        <div class="col-12"><label class="form-label fw-semibold" style="font-size:.83rem">Notas</label><textarea id="clienteNotas" class="form-control" rows="2" placeholder="Información relevante..."></textarea></div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-light" onclick="closeModal('modalNuevoCliente')">Cancelar</button>
+      <button class="btn btn-sarc" onclick="submitCliente()"><i class="bi bi-save me-1"></i>Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nueva Satisfacción -->
+<div class="modal-backdrop-sarc" id="modalNuevaSatisfaccion">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-star me-2"></i>Registrar Encuesta</h5>
+      <button class="modal-close-btn" onclick="closeModal('modalNuevaSatisfaccion')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-bdy">
+      <div class="row g-3">
+        <div class="col-12"><label class="form-label fw-semibold" style="font-size:.83rem">Ruta *</label><select id="satisfaccionRuta" class="form-select"><option value="">Seleccione una ruta completada</option></select></div>
+        <div class="col-12"><label class="form-label fw-semibold" style="font-size:.83rem">Cliente *</label><select id="satisfaccionCliente" class="form-select"><option value="">Seleccione un cliente</option></select></div>
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Calificación *</label><select id="satisfaccionCalificacion" class="form-select"><option value="">Seleccione...</option><option value="5">⭐⭐⭐⭐⭐ Excelente</option><option value="4">⭐⭐⭐⭐ Muy Bueno</option><option value="3">⭐⭐⭐ Bueno</option><option value="2">⭐⭐ Regular</option><option value="1">⭐ Malo</option></select></div>
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Fecha *</label><input type="date" id="satisfaccionFecha" class="form-control"></div>
+        <div class="col-12"><label class="form-label fw-semibold" style="font-size:.83rem">Comentarios</label><textarea id="satisfaccionComentarios" class="form-control" rows="2" placeholder="Comentarios del cliente..."></textarea></div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-light" onclick="closeModal('modalNuevaSatisfaccion')">Cancelar</button>
+      <button class="btn btn-sarc" onclick="submitSatisfaccion()"><i class="bi bi-save me-1"></i>Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Mi Perfil -->
+<div class="modal-backdrop-sarc" id="modalPerfil">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-person-circle me-2"></i>Mi Perfil</h5>
+      <button class="modal-close-btn" onclick="closeModal('modalPerfil')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-bdy">
+      <div class="profile-avatar-lg" id="profileAvatarLg">U</div>
+      <div class="row g-3">
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Usuario</label><input type="text" id="perfil_username" class="form-control" readonly></div>
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Rol</label><input type="text" id="perfil_rol" class="form-control" readonly></div>
+        <div class="col-12"><label class="form-label fw-semibold" style="font-size:.83rem">Nombre Completo *</label><input type="text" id="perfil_nombre" class="form-control" placeholder="Tu nombre completo"></div>
+        <div class="col-12"><label class="form-label fw-semibold" style="font-size:.83rem">Email *</label><input type="email" id="perfil_email" class="form-control" placeholder="tu@email.com"></div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-light" onclick="closeModal('modalPerfil')">Cancelar</button>
+      <button class="btn btn-sarc" onclick="savePerfil()"><i class="bi bi-save me-1"></i>Guardar Cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Cambiar Contraseña -->
+<div class="modal-backdrop-sarc" id="modalCambiarPw">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-key-fill me-2"></i>Cambiar Contraseña</h5>
+      <button class="modal-close-btn" onclick="closeModal('modalCambiarPw')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-bdy">
+      <div class="row g-3">
+        <div class="col-12"><label class="form-label fw-semibold" style="font-size:.83rem">Contraseña Actual *</label><input type="password" id="pw_actual" class="form-control" placeholder="Contraseña actual"></div>
+        <div class="col-12"><label class="form-label fw-semibold" style="font-size:.83rem">Nueva Contraseña *</label><input type="password" id="pw_nueva" class="form-control" placeholder="Mínimo 6 caracteres"></div>
+        <div class="col-12"><label class="form-label fw-semibold" style="font-size:.83rem">Confirmar Nueva Contraseña *</label><input type="password" id="pw_confirmar" class="form-control" placeholder="Repita la nueva contraseña"></div>
+        <div class="col-12">
+          <div class="alert alert-info py-2" style="font-size:.83rem">
+            <i class="bi bi-info-circle me-1"></i> La contraseña debe tener mínimo 6 caracteres.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-light" onclick="closeModal('modalCambiarPw')">Cancelar</button>
+      <button class="btn btn-sarc" onclick="cambiarPassword()"><i class="bi bi-key me-1"></i>Cambiar Contraseña</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Registrar usuario (admin) -->
+<div class="modal-backdrop-sarc" id="modalRegisterAdmin">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-person-plus me-2"></i>Nuevo Usuario</h5>
+      <button class="modal-close-btn" onclick="closeModal('modalRegisterAdmin')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-bdy">
+      <div class="row g-3">
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Usuario *</label><input type="text" id="adminRegUsername" class="form-control" placeholder="Nombre de usuario"></div>
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Nombre Completo *</label><input type="text" id="adminRegNombre" class="form-control" placeholder="Nombre completo"></div>
+        <div class="col-12"><label class="form-label fw-semibold" style="font-size:.83rem">Email *</label><input type="email" id="adminRegEmail" class="form-control" placeholder="email@empresa.com"></div>
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Contraseña *</label><input type="password" id="adminRegPassword" class="form-control" placeholder="Mínimo 6 caracteres"></div>
+        <div class="col-md-6"><label class="form-label fw-semibold" style="font-size:.83rem">Confirmar *</label><input type="password" id="adminRegConfirm" class="form-control" placeholder="Repetir contraseña"></div>
+        <div class="col-12">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Rol *</label>
+          <select id="adminRegRole" class="form-select">
+            <option value="asesor">Asesor</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-light" onclick="closeModal('modalRegisterAdmin')">Cancelar</button>
+      <button class="btn btn-sarc" onclick="submitRegistroAdmin()"><i class="bi bi-person-check me-1"></i>Crear Usuario</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Acerca de -->
+<div class="modal-backdrop-sarc" id="modalAcerca">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-info-circle me-2"></i>Acerca de SARC</h5>
+      <button class="modal-close-btn" onclick="closeModal('modalAcerca')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-bdy text-center">
+      <div class="about-logo">🗺️</div>
+      <h4 class="fw-800 mb-1">SARC</h4>
+      <p class="text-muted mb-1" style="font-size:.88rem">Sistema Avanzado de Rutas Comerciales</p>
+      <span class="sarc-badge primary mb-3 d-inline-block">Versión 2.0.0 — Bootstrap 5</span>
+      <hr>
+      <div class="text-start mt-3">
+        <div class="d-flex align-items-center gap-3 mb-3 p-3 rounded-3" style="background:#F8FAFC">
+          <i class="bi bi-grid-fill" style="font-size:1.4rem; color:var(--sarc-primary)"></i>
+          <div><div class="fw-700" style="font-size:.88rem">Dashboard interactivo</div><div class="text-muted" style="font-size:.78rem">Métricas en tiempo real con gráficas</div></div>
+        </div>
+        <div class="d-flex align-items-center gap-3 mb-3 p-3 rounded-3" style="background:#F8FAFC">
+          <i class="bi bi-phone-fill" style="font-size:1.4rem; color:#06B6D4"></i>
+          <div><div class="fw-700" style="font-size:.88rem">100% Responsive</div><div class="text-muted" style="font-size:.78rem">Optimizado para móvil, tablet y escritorio</div></div>
+        </div>
+        <div class="d-flex align-items-center gap-3 mb-3 p-3 rounded-3" style="background:#F8FAFC">
+          <i class="bi bi-shield-lock-fill" style="font-size:1.4rem; color:#10B981"></i>
+          <div><div class="fw-700" style="font-size:.88rem">Control de roles</div><div class="text-muted" style="font-size:.78rem">Administrador, Supervisor y Asesor</div></div>
+        </div>
+      </div>
+      <p class="text-muted mt-3" style="font-size:.78rem">© 2026 SARC. Todos los derechos reservados.</p>
+    </div>
+    <div class="modal-ftr"><button class="btn btn-sarc" onclick="closeModal('modalAcerca')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Modal: Finalizar Visita -->
+<div class="modal-backdrop-sarc" id="modalFinalizarVisita">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-check-circle-fill me-2" style="color:#10B981"></i>Finalizar Visita</h5>
+      <button class="modal-close-btn" onclick="closeModal('modalFinalizarVisita')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-bdy">
+      <div class="text-center mb-3">
+        <div style="font-size:2.5rem">✅</div>
+        <div class="fw-800 mt-2" id="finalizarClienteNombre" style="font-size:1.05rem"></div>
+        <div class="text-muted" style="font-size:.83rem" id="finalizarVisitaDuracion"></div>
+      </div>
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Resultado de la visita *</label>
+          <select id="finalizarResultado" class="form-select">
+            <option value="exitosa">✅ Visita exitosa</option>
+            <option value="sin_contacto">📵 Sin contacto / No estaba</option>
+            <option value="reagendar">📅 Requiere reagendar</option>
+            <option value="negativa">❌ Visita negativa</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold" style="font-size:.83rem">Notas de la visita</label>
+          <textarea id="finalizarNotas" class="form-control" rows="3" placeholder="Observaciones, acuerdos, próximos pasos..."></textarea>
+        </div>
+        <div class="col-12">
+          <div class="sarc-card" style="background:#F8FAFC">
+            <div class="sarc-card-body py-2">
+              <div class="d-flex gap-3 flex-wrap">
+                <div><div style="font-size:.7rem;color:var(--sarc-muted)">ENTRADA</div><div class="fw-700" style="font-size:.85rem;font-family:'DM Mono',monospace" id="finalizarHoraEntrada">—</div></div>
+                <div><div style="font-size:.7rem;color:var(--sarc-muted)">SALIDA</div><div class="fw-700" style="font-size:.85rem;font-family:'DM Mono',monospace" id="finalizarHoraSalida">—</div></div>
+                <div><div style="font-size:.7rem;color:var(--sarc-muted)">DURACIÓN</div><div class="fw-700" style="font-size:.85rem;font-family:'DM Mono',monospace" id="finalizarDuracionFinal">—</div></div>
+                <div><div style="font-size:.7rem;color:var(--sarc-muted)">UBICACIÓN GPS</div><div class="fw-700 gps-coords" id="finalizarGpsCoords">—</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-light" onclick="closeModal('modalFinalizarVisita')">Cancelar</button>
+      <button class="btn-gps-end" onclick="confirmarFinalizarVisita()"><i class="bi bi-check-lg me-1"></i>Confirmar Visita Realizada</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Detalle de visita registrada -->
+<div class="modal-backdrop-sarc" id="modalDetalleVisita">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-clipboard-check me-2"></i>Detalle de Visita</h5>
+      <button class="modal-close-btn" onclick="closeModal('modalDetalleVisita')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-bdy" id="detalleVisitaContent"></div>
+    <div class="modal-ftr"><button class="btn btn-sarc" onclick="closeModal('modalDetalleVisita')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/script.js"></script>
+<script>
+// ════════════════════════════════════════════════════════
+//  SARC v2 — Bootstrap 5 — script inline
+// ════════════════════════════════════════════════════════
+
+const API_URL = 'api';
+let asesores = [], clientes = [], rutas = [], satisfacciones = [], usuarios = [];
+let currentUser = JSON.parse(sessionStorage.getItem('sarc_user') || localStorage.getItem('sarc_user') || 'null');
+let editingId = null, editingType = null;
+let charts = {};
+
+// ── API helpers ──────────────────────────────────────────
+async function http(method, endpoint, body=null) {
+  const opts = { method, headers:{'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const res  = await fetch(`${API_URL}/${endpoint}`, opts);
+  const data = await res.json().catch(()=>({ok:false,error:'Respuesta inválida'}));
+  if (!data.ok) { showNotif('error','Error',data.error||'Error desconocido'); throw new Error(data.error); }
+  return data;
+}
+const apiGet    = ep     => http('GET',    ep);
+const apiPost   = (ep,b) => http('POST',   ep, b);
+const apiPut    = (ep,b) => http('PUT',    ep, b);
+const apiDelete = ep     => http('DELETE', ep);
+
+// ── Notificaciones ───────────────────────────────────────
+function showNotif(type, title, msg) {
+  const icons = {success:'bi-check-circle-fill',error:'bi-x-circle-fill',info:'bi-info-circle-fill',warning:'bi-exclamation-triangle-fill'};
+  const el = document.createElement('div');
+  el.className = `notif ${type}`;
+  el.innerHTML = `<i class="bi ${icons[type]||'bi-bell'} notif-icon"></i><div><div class="notif-title">${title}</div><div class="notif-msg">${msg}</div></div>`;
+  document.getElementById('notifContainer').appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateX(40px)'; el.style.transition='.3s'; setTimeout(()=>el.remove(),300); }, 3500);
+}
+
+// ── LOGIN ────────────────────────────────────────────────
+function showLoginPanel(panel) {
+  document.getElementById('loginFormWrap').style.display   = panel==='login'    ? '' : 'none';
+  document.getElementById('registerFormWrap').style.display= panel==='register' ? '' : 'none';
+  document.getElementById('resetFormWrap').style.display   = panel==='reset'    ? '' : 'none';
+  document.getElementById('loginAlert').classList.add('d-none');
+}
+function showLoginAlert(type, msg) {
+  const el = document.getElementById('loginAlert');
+  el.className = `alert alert-${type==='error'?'danger':'success'} mb-3`;
+  el.textContent = msg;
+  el.classList.remove('d-none');
+}
+async function doLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!username||!password) { showLoginAlert('error','Ingrese usuario y contraseña'); return; }
+  try {
+    const res = await apiPost('auth', {username, password});
+    currentUser = res.data;
+    const remember = document.getElementById('rememberMe').checked;
+    if (remember) localStorage.setItem('sarc_user', JSON.stringify(currentUser));
+    sessionStorage.setItem('sarc_user', JSON.stringify(currentUser));
+    showLoginAlert('success','✅ Bienvenido, '+currentUser.nombre);
+    setTimeout(()=>{ showMainApp(); initializeApp(); }, 700);
+  } catch(e) { showLoginAlert('error', e.message||'Usuario o contraseña incorrectos'); }
+}
+async function doRegister() {
+  const username = document.getElementById('regUsername').value.trim();
+  const nombre   = document.getElementById('regNombre').value.trim();
+  const email    = document.getElementById('regEmail').value.trim();
+  const pw       = document.getElementById('regPassword').value;
+  const pw2      = document.getElementById('regConfirmPw').value;
+  const rol      = document.getElementById('regRole').value;
+  if (!username||!nombre||!email||!pw) { showLoginAlert('error','Complete todos los campos'); return; }
+  if (pw!==pw2) { showLoginAlert('error','Las contraseñas no coinciden'); return; }
+  if (pw.length<6) { showLoginAlert('error','La contraseña debe tener mínimo 6 caracteres'); return; }
+  try {
+    await apiPost('usuarios', {username,nombre,email,password:pw,rol,estado:'activo'});
+    showLoginAlert('success','✅ Cuenta creada. Ya puedes iniciar sesión.');
+    setTimeout(()=>showLoginPanel('login'), 1500);
+  } catch(e) { showLoginAlert('error', e.message||'Error al registrar'); }
+}
+async function doReset() {
+  const email = document.getElementById('resetEmail').value.trim();
+  if (!email) { showLoginAlert('error','Ingrese su email'); return; }
+  // Simulado — en producción llamaría a la API
+  showLoginAlert('success','📧 Instrucciones enviadas a '+email+' (modo demo)');
+  setTimeout(()=>showLoginPanel('login'), 2500);
+}
+function logout() {
+  if (!confirm('¿Está seguro de cerrar sesión?')) return;
+  currentUser = null;
+  sessionStorage.removeItem('sarc_user'); localStorage.removeItem('sarc_user');
+  Object.values(charts).forEach(c=>{try{c.destroy();}catch(_){}});
+  charts = {};
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('mainApp').style.display='none';
+  showLoginPanel('login');
+}
+
+// ── SIDEBAR ──────────────────────────────────────────────
+function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebarOverlay').classList.add('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+
+// ── USER MENU ────────────────────────────────────────────
+function toggleUserMenu() { document.getElementById('userDropdown').classList.toggle('show'); }
+function closeUserMenu()  { document.getElementById('userDropdown').classList.remove('show'); }
+document.addEventListener('click', e => {
+  if (!e.target.closest('#userMenuBtn') && !e.target.closest('#userDropdown')) closeUserMenu();
+});
+
+// ── TABS ─────────────────────────────────────────────────
+const TAB_TITLES = {dashboard:'Dashboard',rutas:'Rutas',visitas:'Visitas GPS',asesores:'Asesores',clientes:'Clientes',satisfaccion:'Satisfacción',reportes:'Reportes',usuarios:'Gestión de Usuarios',configuracion:'Configuración del Sistema'};
+async function switchTab(name, btn) {
+  document.querySelectorAll('.tab-content-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(b=>b.classList.remove('active'));
+  const pane = document.getElementById('tab-'+name);
+  if (pane) pane.classList.add('active');
+  if (btn)  btn.classList.add('active');
+  else { document.querySelectorAll('.sidebar-item').forEach(b=>{ if(b.getAttribute('onclick')?.includes(`'${name}'`)) b.classList.add('active'); }); }
+  document.getElementById('topbarTitle').textContent = TAB_TITLES[name]||name;
+  closeSidebar();
+  if (name==='dashboard')    { await refreshDashboard(); updateCharts(); }
+  if (name==='rutas')        { updateSelectAsesores(); updateSelectClientes(); renderRutas(); }
+  if (name==='visitas')      { initVisitasTab(); }
+  if (name==='asesores')     { renderAsesores(); }
+  if (name==='clientes')     { renderClientes(); }
+  if (name==='satisfaccion') { updateSelectSatisfaccion(); renderSatisfacciones(); updateSatisfaccionChart(); }
+  if (name==='reportes')     { renderReportes(); updateReportCharts(); }
+  if (name==='usuarios')     { await loadUsuarios(); }
+}
+
+// ── MODALES ──────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.modal-backdrop-sarc').forEach(m=>{
+  m.addEventListener('click', e=>{ if(e.target===m) m.classList.remove('show'); });
+});
+
+// ── SHOW MAIN APP ────────────────────────────────────────
+function showMainApp() {
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('mainApp').style.display='block';
+  const u = currentUser;
+  // Sidebar user
+  document.getElementById('sidebarUserName').textContent = u.nombre;
+  document.getElementById('topbarUser').textContent = u.nombre;
+  const initials = u.nombre.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  document.getElementById('sidebarAvatar').textContent = initials;
+  // Role badge
+  const roleEl = document.getElementById('sidebarRoleBadge');
+  const roleLabels = {admin:'Administrador',supervisor:'Supervisor',asesor:'Asesor'};
+  roleEl.textContent = roleLabels[u.rol]||u.rol;
+  roleEl.className = `role-badge-${u.rol}`;
+  // Dropdown info
+  document.getElementById('dropUserEmail').textContent = u.email||u.username;
+  document.getElementById('dropUserRol').textContent   = roleLabels[u.rol]||u.rol;
+  // Admin menu items
+  document.getElementById('adminMenuItems').classList.toggle('d-none', u.rol!=='admin');
+  document.getElementById('supervisorMenuItems').classList.toggle('d-none', u.rol!=='supervisor');
+  document.getElementById('asesorMenuItems').classList.toggle('d-none', u.rol!=='asesor');
+  // Admin-only sidebar items
+  document.querySelectorAll('.admin-only').forEach(el=>el.classList.toggle('d-none', u.rol!=='admin'));
+}
+
+// ── INIT ─────────────────────────────────────────────────
+async function initializeApp() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('routeFecha').value        = today;
+  document.getElementById('satisfaccionFecha').value = today;
+  try {
+    const [rA,rC,rR,rS] = await Promise.all([apiGet('asesores'),apiGet('clientes'),apiGet('rutas'),apiGet('satisfacciones')]);
+    asesores=rA.data; clientes=rC.data; rutas=rR.data; satisfacciones=rS.data;
+    await refreshDashboard(); updateCharts();
+    updateSelectAsesores(); updateSelectClientes(); updateSelectSatisfaccion();
+    renderAsesores(); renderClientes(); renderRutas(); renderSatisfacciones();
+  } catch(e) { console.warn('API no disponible — modo demo'); loadDemoData(); }
+}
+
+// ── DEMO DATA ────────────────────────────────────────────
+function loadDemoData() {
+  asesores=[{id:1,nombre:'Carlos Rodríguez',email:'carlos@sarc.co',telefono:'+57 300 111 2222',tipo:'senior',zona:'Norte',estado:'activo'},{id:2,nombre:'Ana Martínez',email:'ana@sarc.co',telefono:'+57 310 222 3333',tipo:'junior',zona:'Sur',estado:'activo'},{id:3,nombre:'Luis González',email:'luis@sarc.co',telefono:'+57 320 333 4444',tipo:'especialista',zona:'Centro',estado:'vacaciones'}];
+  clientes=[{id:1,nombre:'Supermercados El Éxito',nit:'890900123-1',tipo:'mayorista',contacto:'Juan García',email:'compras@exito.co',telefono:'+57 601 234 5678',direccion:'Calle 80 #40-20',ciudad:'Medellín',zona:'Norte',estado:'activo'},{id:2,nombre:'Tienda La Favorita',nit:'700100456-2',tipo:'minorista',contacto:'María López',email:'favorita@gmail.com',telefono:'+57 311 222 3333',direccion:'Carrera 50 #10-5',ciudad:'Medellín',zona:'Centro',estado:'activo'},{id:3,nombre:'Distribuciones Omega',nit:'800200789-3',tipo:'distribuidor',contacto:'Pedro Sánchez',email:'ventas@omega.co',telefono:'+57 602 111 2222',direccion:'Av. El Poblado #1-100',ciudad:'Medellín',zona:'Sur',estado:'activo'}];
+  rutas=[{id:1,asesor_id:1,asesor_nombre:'Carlos Rodríguez',fecha:'2026-03-18',hora_inicio:'08:00',hora_fin:'17:00',zona:'Norte',estado:'completada',vehiculo:'ABC-123',km_inicial:1000,km_final:1120,clientes_ids:[1,2],observaciones:'Visita exitosa'},{id:2,asesor_id:2,asesor_nombre:'Ana Martínez',fecha:'2026-03-19',hora_inicio:'09:00',hora_fin:'',zona:'Sur',estado:'planificada',vehiculo:'DEF-456',km_inicial:500,km_final:0,clientes_ids:[3],observaciones:''},{id:3,asesor_id:1,asesor_nombre:'Carlos Rodríguez',fecha:'2026-03-20',hora_inicio:'08:30',hora_fin:'',zona:'Centro',estado:'en-progreso',vehiculo:'ABC-123',km_inicial:1120,km_final:0,clientes_ids:[1,3],observaciones:''}];
+  satisfacciones=[{id:1,ruta_id:1,cliente_id:1,cliente_nombre:'Supermercados El Éxito',asesor_nombre:'Carlos Rodríguez',calificacion:5,fecha:'2026-03-18',comentarios:'Excelente atención y puntualidad'},{id:2,ruta_id:1,cliente_id:2,cliente_nombre:'Tienda La Favorita',asesor_nombre:'Carlos Rodríguez',calificacion:4,fecha:'2026-03-18',comentarios:'Muy buena visita'}];
+  updateSelectAsesores(); updateSelectClientes(); updateSelectSatisfaccion();
+  refreshDashboard(); updateCharts(); renderAsesores(); renderClientes(); renderRutas(); renderSatisfacciones();
+}
+
+// ── DASHBOARD ────────────────────────────────────────────
+async function refreshDashboard() {
+  try {
+    const res=await apiGet('dashboard'); const s=res.data;
+    document.getElementById('st1').textContent=s.asesores_activos+'/'+s.total_asesores;
+    document.getElementById('st2').textContent=s.clientes_activos+'/'+s.total_clientes;
+    document.getElementById('st3').textContent=s.rutas_completadas;
+    document.getElementById('st4').textContent=s.rutas_pendientes;
+    document.getElementById('st5').textContent=rutas.length;
+    document.getElementById('st6').textContent=s.promedio_satisfaccion>0?s.promedio_satisfaccion+'⭐':'N/A';
+    document.getElementById('st7').textContent=GPS.visitasLog.length;
+  } catch {
+    const act=asesores.filter(a=>a.estado==='activo').length;
+    const cAct=clientes.filter(c=>c.estado==='activo').length;
+    const comp=rutas.filter(r=>r.estado==='completada').length;
+    const pend=rutas.filter(r=>r.estado==='planificada'||r.estado==='en-progreso').length;
+    const prom=satisfacciones.length?(satisfacciones.reduce((t,s)=>t+parseInt(s.calificacion),0)/satisfacciones.length).toFixed(1):0;
+    document.getElementById('st1').textContent=act+'/'+asesores.length;
+    document.getElementById('st2').textContent=cAct+'/'+clientes.length;
+    document.getElementById('st3').textContent=comp;
+    document.getElementById('st4').textContent=pend;
+    document.getElementById('st5').textContent=rutas.length;
+    document.getElementById('st6').textContent=prom>0?prom+'⭐':'N/A';
+    document.getElementById('st7').textContent=GPS.visitasLog.length;
+  }
+  const recientes=[...rutas].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha)).slice(0,5);
+  document.getElementById('recentActivity').innerHTML = recientes.length===0
+    ? '<div class="empty-state"><i class="bi bi-inbox"></i><p>Sin actividad reciente</p></div>'
+    : recientes.map(r=>{
+        const ids=r.clientes_ids||[];
+        const bc=r.estado==='completada'?'success':r.estado==='cancelada'?'danger':r.estado==='en-progreso'?'info':'warning';
+        return `<div class="data-card"><div class="data-card-header"><div class="data-card-title">${r.asesor_nombre||'Desconocido'} — ${formatDate(r.fecha)}</div><span class="sarc-badge ${bc}">${r.estado}</span></div><div class="data-card-meta"><span class="meta-item"><strong>Zona:</strong> ${r.zona}</span><span class="meta-item"><strong>Clientes:</strong> ${Array.isArray(ids)?ids.length:0}</span></div></div>`;
+      }).join('');
+}
+
+// ── CHARTS ───────────────────────────────────────────────
+function updateCharts() {
+  const estados={planificada:0,'en-progreso':0,completada:0,cancelada:0};
+  rutas.forEach(r=>{if(estados[r.estado]!==undefined) estados[r.estado]++;});
+  const ctx1=document.getElementById('rutasChart');
+  if(charts.rutas){charts.rutas.destroy();}
+  charts.rutas=new Chart(ctx1,{type:'doughnut',data:{labels:['Planificada','En Progreso','Completada','Cancelada'],datasets:[{data:Object.values(estados),backgroundColor:['#F59E0B','#06B6D4','#10B981','#EF4444'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{family:'Plus Jakarta Sans',size:11}}}}}});
+
+  const top5=asesores.slice(0,5);
+  const ctx2=document.getElementById('asesoresChart');
+  if(charts.asesores){charts.asesores.destroy();}
+  charts.asesores=new Chart(ctx2,{type:'bar',data:{labels:top5.map(a=>a.nombre.split(' ')[0]),datasets:[{label:'Rutas Totales',data:top5.map(a=>rutas.filter(r=>r.asesor_id===a.id).length),backgroundColor:'rgba(79,70,229,.7)',borderRadius:8},{label:'Completadas',data:top5.map(a=>rutas.filter(r=>r.asesor_id===a.id&&r.estado==='completada').length),backgroundColor:'rgba(16,185,129,.7)',borderRadius:8}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{family:'Plus Jakarta Sans',size:11}}}},scales:{y:{beginAtZero:true,ticks:{font:{family:'Plus Jakarta Sans'}}}}}});
+}
+function updateReportCharts() {
+  const tipos={};
+  clientes.forEach(c=>tipos[c.tipo]=(tipos[c.tipo]||0)+1);
+  const ctx3=document.getElementById('clientesTipoChart');
+  if(charts.clientes){charts.clientes.destroy();}
+  charts.clientes=new Chart(ctx3,{type:'pie',data:{labels:Object.keys(tipos),datasets:[{data:Object.values(tipos),backgroundColor:['#4F46E5','#06B6D4','#10B981','#F59E0B','#EF4444'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{family:'Plus Jakarta Sans',size:11}}}}}});
+  const top5=asesores.slice(0,5);
+  const ctx4=document.getElementById('rendimientoChart');
+  if(charts.rend){charts.rend.destroy();}
+  charts.rend=new Chart(ctx4,{type:'bar',data:{labels:top5.map(a=>a.nombre.split(' ')[0]),datasets:[{label:'% Éxito',data:top5.map(a=>{const ra=rutas.filter(r=>r.asesor_id===a.id);return ra.length?Math.round(ra.filter(r=>r.estado==='completada').length/ra.length*100):0;}),backgroundColor:'rgba(79,70,229,.7)',borderRadius:8}]},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}}});
+}
+function updateSatisfaccionChart() {
+  const counts=[0,0,0,0,0];
+  satisfacciones.forEach(s=>{ const v=parseInt(s.calificacion); if(v>=1&&v<=5) counts[v-1]++; });
+  const ctx=document.getElementById('satisfaccionChart');
+  if(charts.sat){charts.sat.destroy();}
+  charts.sat=new Chart(ctx,{type:'bar',data:{labels:['1⭐','2⭐','3⭐','4⭐','5⭐'],datasets:[{data:counts,backgroundColor:['#EF4444','#F59E0B','#FCD34D','#34D399','#10B981'],borderRadius:8}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});
+}
+
+// ── UTILIDADES ───────────────────────────────────────────
+function formatDate(d) {
+  if(!d) return 'N/A';
+  const dt=new Date(d.includes('T')?d:d+'T00:00:00');
+  return dt.toLocaleDateString('es-ES',{year:'numeric',month:'short',day:'numeric'});
+}
+function badgeClass(estado) {
+  return {activo:'success',completada:'success',inactivo:'danger',cancelada:'danger',planificada:'warning','en-progreso':'info',prospecto:'info',vacaciones:'secondary'}[estado]||'secondary';
+}
+function getAsesorId(r){return r.asesor_id??r.asesorId??0;}
+function getClienteIds(r){return r.clientes_ids??r.clientesIds??[];}
+
+// ── SELECTS ──────────────────────────────────────────────
+function updateSelectAsesores() {
+  const opts=asesores.filter(a=>a.estado==='activo').map(a=>`<option value="${a.id}">${a.nombre} (${a.zona||'—'})</option>`).join('');
+  document.getElementById('routeAsesor').innerHTML='<option value="">Seleccione asesor...</option>'+opts;
+  document.getElementById('filterRouteAsesor').innerHTML='<option value="">Todos los asesores</option>'+opts;
+}
+function updateSelectClientes() {
+  const opts=clientes.filter(c=>c.estado==='activo').map(c=>`<option value="${c.id}">${c.nombre} (${c.tipo})</option>`).join('');
+  document.getElementById('routeClientes').innerHTML=opts;
+  document.getElementById('satisfaccionCliente').innerHTML='<option value="">Seleccione un cliente</option>'+opts;
+}
+function updateSelectSatisfaccion() {
+  document.getElementById('satisfaccionRuta').innerHTML='<option value="">Seleccione una ruta completada</option>'+rutas.filter(r=>r.estado==='completada').map(r=>{const a=asesores.find(x=>x.id===getAsesorId(r));return`<option value="${r.id}">Ruta #${r.id} — ${a?.nombre||r.asesor_nombre||'N/A'} (${formatDate(r.fecha)})</option>`;}).join('');
+}
+
+// ── ASESORES ─────────────────────────────────────────────
+function renderAsesores() {
+  const term=(document.getElementById('searchAsesor')?.value||'').toLowerCase();
+  const filtered=asesores.filter(a=>a.nombre.toLowerCase().includes(term)||(a.email||'').toLowerCase().includes(term));
+  document.getElementById('asesoresList').innerHTML=filtered.length===0
+    ?'<div class="empty-state"><i class="bi bi-people"></i><p>No hay asesores</p></div>'
+    :filtered.map(a=>`<div class="data-card"><div class="data-card-header"><div class="data-card-title"><i class="bi bi-person-fill me-2" style="color:var(--sarc-primary)"></i>${a.nombre}</div><div class="d-flex gap-2"><span class="sarc-badge ${badgeClass(a.estado)}">${a.estado}</span><span class="sarc-badge primary">${a.tipo||'—'}</span></div></div><div class="data-card-meta"><span class="meta-item"><i class="bi bi-envelope me-1"></i>${a.email||'N/A'}</span><span class="meta-item"><i class="bi bi-phone me-1"></i>${a.telefono||'N/A'}</span><span class="meta-item"><i class="bi bi-geo-alt me-1"></i>${a.zona||'N/A'}</span></div><div class="data-card-actions"><button class="btn btn-xs btn-outline-primary" onclick="editAsesor(${a.id})"><i class="bi bi-pencil me-1"></i>Editar</button><button class="btn btn-xs btn-outline-danger" onclick="deleteAsesor(${a.id},'${a.nombre.replace(/'/g,"\\'")}')"><i class="bi bi-trash me-1"></i>Eliminar</button></div></div>`).join('');
+}
+async function submitAsesor() {
+  const body={nombre:document.getElementById('asesorNombre').value.trim(),email:document.getElementById('asesorEmail').value.trim(),telefono:document.getElementById('asesorTelefono').value.trim(),tipo:document.getElementById('asesorTipo').value,zona:document.getElementById('asesorZona').value,estado:document.getElementById('asesorEstado').value};
+  if(!body.nombre||!body.email||!body.tipo||!body.zona){showNotif('error','Error','Complete todos los campos requeridos');return;}
+  try {
+    if(editingId&&editingType==='asesor'){await apiPut(`asesores/${editingId}`,body);showNotif('success','Actualizado','Asesor actualizado');editingId=null;editingType=null;}
+    else{await apiPost('asesores',body);showNotif('success','Guardado','Asesor registrado');}
+    const r=await apiGet('asesores');asesores=r.data;renderAsesores();updateSelectAsesores();closeModal('modalNuevoAsesor');
+  } catch(e){
+    // Demo fallback
+    if(editingId&&editingType==='asesor'){const i=asesores.findIndex(x=>x.id===editingId);if(i>=0)asesores[i]={...asesores[i],...body};editingId=null;editingType=null;}
+    else{const id=Math.max(0,...asesores.map(a=>a.id))+1;asesores.push({id,...body});}
+    renderAsesores();updateSelectAsesores();closeModal('modalNuevoAsesor');showNotif('info','Demo','Guardado en modo demo');
+  }
+}
+function editAsesor(id) {
+  const a=asesores.find(x=>x.id===id);if(!a)return;
+  document.getElementById('asesorNombre').value=a.nombre;
+  document.getElementById('asesorEmail').value=a.email||'';
+  document.getElementById('asesorTelefono').value=a.telefono||'';
+  document.getElementById('asesorTipo').value=a.tipo||'';
+  document.getElementById('asesorZona').value=a.zona||'';
+  document.getElementById('asesorEstado').value=a.estado;
+  document.getElementById('tituloModalAsesor').textContent='Editar Asesor';
+  editingId=id;editingType='asesor';openModal('modalNuevoAsesor');
+}
+async function deleteAsesor(id,nombre) {
+  if(!confirm(`¿Eliminar al asesor "${nombre}"?`))return;
+  try{await apiDelete(`asesores/${id}`);const r=await apiGet('asesores');asesores=r.data;}
+  catch{asesores=asesores.filter(a=>a.id!==id);}
+  renderAsesores();updateSelectAsesores();showNotif('info','Eliminado',nombre+' eliminado');
+}
+
+// ── CLIENTES ─────────────────────────────────────────────
+function renderClientes() {
+  const term=(document.getElementById('searchCliente')?.value||'').toLowerCase();
+  const tipo=document.getElementById('filterClienteTipo')?.value||'';
+  const est=document.getElementById('filterClienteEstado')?.value||'';
+  const filtered=clientes.filter(c=>c.nombre.toLowerCase().includes(term)&&(!tipo||c.tipo===tipo)&&(!est||c.estado===est));
+  document.getElementById('clientesList').innerHTML=filtered.length===0
+    ?'<div class="empty-state"><i class="bi bi-buildings"></i><p>No hay clientes</p></div>'
+    :filtered.map(c=>`<div class="data-card"><div class="data-card-header"><div class="data-card-title"><i class="bi bi-buildings-fill me-2" style="color:#06B6D4"></i>${c.nombre}</div><div class="d-flex gap-2"><span class="sarc-badge ${badgeClass(c.estado)}">${c.estado}</span><span class="sarc-badge info">${c.tipo}</span></div></div><div class="data-card-meta"><span class="meta-item"><strong>NIT:</strong> ${c.nit||'N/A'}</span><span class="meta-item"><strong>Contacto:</strong> ${c.contacto||'N/A'}</span><span class="meta-item"><i class="bi bi-phone me-1"></i>${c.telefono||'N/A'}</span><span class="meta-item"><i class="bi bi-geo-alt me-1"></i>${c.ciudad||'N/A'} — ${c.zona||'N/A'}</span></div><div class="data-card-actions"><button class="btn btn-xs btn-outline-primary" onclick="editCliente(${c.id})"><i class="bi bi-pencil me-1"></i>Editar</button><button class="btn btn-xs btn-outline-danger" onclick="deleteCliente(${c.id},'${c.nombre.replace(/'/g,"\\'")}')"><i class="bi bi-trash me-1"></i>Eliminar</button></div></div>`).join('');
+}
+async function submitCliente() {
+  const body={nombre:document.getElementById('clienteNombre').value.trim(),nit:document.getElementById('clienteNIT').value.trim(),tipo:document.getElementById('clienteTipo').value,contacto:document.getElementById('clienteContacto').value.trim(),email:document.getElementById('clienteEmail').value.trim(),telefono:document.getElementById('clienteTelefono').value.trim(),direccion:document.getElementById('clienteDireccion').value.trim(),ciudad:document.getElementById('clienteCiudad').value.trim(),zona:document.getElementById('clienteZona').value,estado:document.getElementById('clienteEstado').value,notas:document.getElementById('clienteNotas').value};
+  if(!body.nombre||!body.nit||!body.tipo){showNotif('error','Error','Complete todos los campos requeridos');return;}
+  try{
+    if(editingId&&editingType==='cliente'){await apiPut(`clientes/${editingId}`,body);editingId=null;editingType=null;}
+    else{await apiPost('clientes',body);}
+    const r=await apiGet('clientes');clientes=r.data;
+  } catch{
+    if(editingId&&editingType==='cliente'){const i=clientes.findIndex(x=>x.id===editingId);if(i>=0)clientes[i]={...clientes[i],...body};editingId=null;editingType=null;}
+    else{clientes.push({id:Math.max(0,...clientes.map(c=>c.id))+1,...body});}
+    showNotif('info','Demo','Guardado en modo demo');
+  }
+  renderClientes();updateSelectClientes();closeModal('modalNuevoCliente');showNotif('success','Guardado','Cliente guardado');
+}
+function editCliente(id) {
+  const c=clientes.find(x=>x.id===id);if(!c)return;
+  document.getElementById('clienteNombre').value=c.nombre;document.getElementById('clienteNIT').value=c.nit||'';
+  document.getElementById('clienteTipo').value=c.tipo;document.getElementById('clienteContacto').value=c.contacto||'';
+  document.getElementById('clienteEmail').value=c.email||'';document.getElementById('clienteTelefono').value=c.telefono||'';
+  document.getElementById('clienteDireccion').value=c.direccion||'';document.getElementById('clienteCiudad').value=c.ciudad||'';
+  document.getElementById('clienteZona').value=c.zona||'';document.getElementById('clienteEstado').value=c.estado;
+  document.getElementById('clienteNotas').value=c.notas||'';
+  document.getElementById('tituloModalCliente').textContent='Editar Cliente';
+  editingId=id;editingType='cliente';openModal('modalNuevoCliente');
+}
+async function deleteCliente(id,nombre) {
+  if(!confirm(`¿Eliminar "${nombre}"?`))return;
+  try{await apiDelete(`clientes/${id}`);const r=await apiGet('clientes');clientes=r.data;}
+  catch{clientes=clientes.filter(c=>c.id!==id);}
+  renderClientes();updateSelectClientes();showNotif('info','Eliminado',nombre+' eliminado');
+}
+
+// ── RUTAS ────────────────────────────────────────────────
+function renderRutas() {
+  const fA=document.getElementById('filterRouteAsesor')?.value||'';
+  const fE=document.getElementById('filterRouteEstado')?.value||'';
+  const fF=document.getElementById('filterRouteFecha')?.value||'';
+  const filtered=rutas.filter(r=>(!fA||String(getAsesorId(r))===fA)&&(!fE||r.estado===fE)&&(!fF||r.fecha===fF));
+  document.getElementById('routesList').innerHTML=filtered.length===0
+    ?'<div class="empty-state"><i class="bi bi-map"></i><p>No hay rutas</p></div>'
+    :filtered.map(r=>{
+      const ids=getClienteIds(r);
+      const cv=Array.isArray(ids)?ids.map(id=>clientes.find(c=>c.id===id)).filter(Boolean):[];
+      const km=Math.max(0,parseInt(r.km_final||0)-parseInt(r.km_inicial||0));
+      const bc=badgeClass(r.estado);
+      return `<div class="data-card"><div class="data-card-header"><div class="data-card-title"><i class="bi bi-map-fill me-2" style="color:var(--sarc-primary)"></i>${r.asesor_nombre||'Desconocido'}</div><span class="sarc-badge ${bc}">${r.estado}</span></div><div class="data-card-meta"><span class="meta-item"><strong>Fecha:</strong> ${formatDate(r.fecha)}</span><span class="meta-item"><strong>Hora:</strong> ${r.hora_inicio||'N/A'}${r.hora_fin?' → '+r.hora_fin:''}</span><span class="meta-item"><strong>Zona:</strong> ${r.zona}</span><span class="meta-item"><strong>Clientes:</strong> ${cv.length||ids.length||0}</span>${r.vehiculo?`<span class="meta-item"><strong>Vehículo:</strong> ${r.vehiculo}</span>`:''} ${km>0?`<span class="meta-item"><strong>Km:</strong> ${km} km</span>`:''}</div>${cv.length?`<div style="font-size:.8rem;color:var(--sarc-muted);margin-top:8px"><i class="bi bi-buildings me-1"></i>${cv.map(c=>c.nombre).join(', ')}</div>`:''}<div class="data-card-actions"><button class="btn btn-xs btn-outline-primary" onclick="editRuta(${r.id})"><i class="bi bi-pencil me-1"></i>Editar</button>${r.estado!=='completada'&&r.estado!=='cancelada'?`<button class="btn btn-xs btn-outline-success" onclick="completarRuta(${r.id})"><i class="bi bi-check me-1"></i>Completar</button>`:''}<button class="btn btn-xs btn-outline-danger" onclick="deleteRuta(${r.id})"><i class="bi bi-trash me-1"></i>Eliminar</button></div></div>`;
+    }).join('');
+}
+async function submitRuta() {
+  const asesorId=parseInt(document.getElementById('routeAsesor').value);
+  const fecha=document.getElementById('routeFecha').value;
+  const horaInicio=document.getElementById('routeHoraInicio').value;
+  const zona=document.getElementById('routeZona').value;
+  if(!asesorId||!fecha||!horaInicio||!zona){showNotif('error','Error','Complete todos los campos requeridos (*)');return;}
+  const selClientes=Array.from(document.getElementById('routeClientes').selectedOptions).map(o=>parseInt(o.value));
+  if(!selClientes.length){showNotif('warning','Requerido','Seleccione al menos un cliente');return;}
+  const kmI=parseInt(document.getElementById('routeKmInicial').value)||0;
+  const kmF=parseInt(document.getElementById('routeKmFinal').value)||0;
+  if(kmF&&kmF<kmI){showNotif('error','Error','Km final no puede ser menor al inicial');return;}
+  const body={asesor_id:asesorId,fecha,hora_inicio:horaInicio,hora_fin:document.getElementById('routeHoraFin').value||'',zona,estado:document.getElementById('routeEstado').value,vehiculo:document.getElementById('routeVehiculo').value||'',km_inicial:kmI,km_final:kmF,clientes_ids:selClientes,observaciones:document.getElementById('routeObservaciones').value||''};
+  try{
+    if(editingId&&editingType==='ruta'){await apiPut(`rutas/${editingId}`,body);editingId=null;editingType=null;}
+    else{await apiPost('rutas',body);}
+    const r=await apiGet('rutas');rutas=r.data;
+  } catch{
+    const asesor=asesores.find(a=>a.id===asesorId);
+    if(editingId&&editingType==='ruta'){const i=rutas.findIndex(x=>x.id===editingId);if(i>=0)rutas[i]={...rutas[i],...body,asesor_nombre:asesor?.nombre||''};editingId=null;editingType=null;}
+    else{rutas.push({id:Math.max(0,...rutas.map(r=>r.id))+1,...body,asesor_nombre:asesor?.nombre||''});}
+    showNotif('info','Demo','Guardado en modo demo');
+  }
+  renderRutas();updateSelectSatisfaccion();refreshDashboard();updateCharts();closeModal('modalNuevaRuta');showNotif('success','Guardado','Ruta guardada');
+}
+function editRuta(id) {
+  const r=rutas.find(x=>x.id===id);if(!r)return;
+  document.getElementById('routeAsesor').value=getAsesorId(r);
+  document.getElementById('routeFecha').value=r.fecha;
+  document.getElementById('routeHoraInicio').value=r.hora_inicio||'';
+  document.getElementById('routeHoraFin').value=r.hora_fin||'';
+  document.getElementById('routeZona').value=r.zona;
+  document.getElementById('routeEstado').value=r.estado;
+  document.getElementById('routeVehiculo').value=r.vehiculo||'';
+  document.getElementById('routeKmInicial').value=r.km_inicial||'';
+  document.getElementById('routeKmFinal').value=r.km_final||'';
+  document.getElementById('routeObservaciones').value=r.observaciones||'';
+  const ids=getClienteIds(r);
+  Array.from(document.getElementById('routeClientes').options).forEach(o=>o.selected=ids.includes(parseInt(o.value)));
+  document.getElementById('tituloModalRuta').textContent='Editar Ruta';
+  editingId=id;editingType='ruta';openModal('modalNuevaRuta');
+}
+async function completarRuta(id) {
+  const horaFin=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  try{await apiPut(`rutas/${id}`,{estado:'completada',hora_fin:horaFin});const r=await apiGet('rutas');rutas=r.data;}
+  catch{const i=rutas.findIndex(x=>x.id===id);if(i>=0)rutas[i]={...rutas[i],estado:'completada',hora_fin:horaFin};}
+  renderRutas();updateSelectSatisfaccion();refreshDashboard();updateCharts();showNotif('success','Completada',`Ruta #${id} completada`);
+}
+async function deleteRuta(id) {
+  if(!confirm(`¿Eliminar la ruta #${id}?`))return;
+  try{await apiDelete(`rutas/${id}`);const r=await apiGet('rutas');rutas=r.data;}
+  catch{rutas=rutas.filter(r=>r.id!==id);}
+  renderRutas();updateSelectSatisfaccion();refreshDashboard();updateCharts();showNotif('info','Eliminada',`Ruta #${id} eliminada`);
+}
+
+// ── SATISFACCION ─────────────────────────────────────────
+async function submitSatisfaccion() {
+  const rutaId=parseInt(document.getElementById('satisfaccionRuta').value);
+  const clienteId=parseInt(document.getElementById('satisfaccionCliente').value);
+  const cal=parseInt(document.getElementById('satisfaccionCalificacion').value);
+  const fecha=document.getElementById('satisfaccionFecha').value;
+  if(!rutaId||!clienteId||!cal||!fecha){showNotif('error','Error','Complete todos los campos');return;}
+  const comentarios=document.getElementById('satisfaccionComentarios').value||'';
+  try{await apiPost('satisfacciones',{ruta_id:rutaId,cliente_id:clienteId,calificacion:cal,fecha,comentarios});const r=await apiGet('satisfacciones');satisfacciones=r.data;}
+  catch{const c=clientes.find(x=>x.id===clienteId);satisfacciones.push({id:Date.now(),ruta_id:rutaId,cliente_id:clienteId,cliente_nombre:c?.nombre||'N/A',asesor_nombre:'',calificacion:cal,fecha,comentarios});showNotif('info','Demo','Guardado en modo demo');}
+  renderSatisfacciones();updateSatisfaccionChart();closeModal('modalNuevaSatisfaccion');showNotif('success','Registrado',`Calificación: ${cal}⭐`);
+}
+function renderSatisfacciones() {
+  const el=document.getElementById('satisfaccionList');
+  if(!satisfacciones.length){el.innerHTML='<div class="empty-state"><i class="bi bi-star"></i><p>No hay encuestas registradas</p></div>';return;}
+  const sorted=[...satisfacciones].sort((a,b)=>new Date(b.fecha_registro||b.fecha||0)-new Date(a.fecha_registro||a.fecha||0)).slice(0,20);
+  el.innerHTML=`<div class="table-responsive"><table class="sarc-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Asesor</th><th>Cal.</th><th>Comentarios</th></tr></thead><tbody>${sorted.map(s=>{const cal=parseInt(s.calificacion);const stars='⭐'.repeat(cal)+'☆'.repeat(5-cal);const color=cal>=4?'#059669':'#DC2626';return`<tr><td style="white-space:nowrap">${formatDate(s.fecha)}</td><td>${s.cliente_nombre||'N/A'}</td><td>${s.asesor_nombre||'N/A'}</td><td><strong style="color:${color}">${stars}</strong></td><td style="max-width:180px;font-size:.8rem">${s.comentarios||'—'}</td></tr>`;}).join('')}</tbody></table></div>`;
+}
+
+// ── USUARIOS ─────────────────────────────────────────────
+async function loadUsuarios() {
+  try{const r=await apiGet('usuarios');usuarios=r.data;renderUsuarios();}
+  catch{usuarios=[{id:1,username:'admin',nombre:'Administrador',email:'admin@sarc.co',rol:'admin',estado:'activo'}];renderUsuarios();}
+}
+function renderUsuarios() {
+  const el=document.getElementById('usuariosList');
+  if(!usuarios.length){el.innerHTML='<div class="empty-state"><i class="bi bi-people"></i><p>No hay usuarios</p></div>';return;}
+  el.innerHTML=`<div class="table-responsive"><table class="sarc-table"><thead><tr><th>Usuario</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${usuarios.map(u=>`<tr><td><code>${u.username}</code></td><td>${u.nombre}</td><td>${u.email||'—'}</td><td><span class="sarc-badge ${u.rol==='admin'?'primary':u.rol==='supervisor'?'warning':'success'}">${u.rol}</span></td><td><span class="sarc-badge ${u.estado==='activo'?'success':'danger'}">${u.estado}</span></td><td><button class="btn btn-xs btn-outline-${u.estado==='activo'?'danger':'success'}" onclick="toggleUsuario(${u.id},'${u.estado==='activo'?'inactivo':'activo'}')"><i class="bi bi-toggle-${u.estado==='activo'?'off':'on'}"></i></button> <button class="btn btn-xs btn-outline-danger" onclick="deleteUsuario(${u.id},'${u.username}')"><i class="bi bi-trash"></i></button></td></tr>`).join('')}</tbody></table></div>`;
+}
+async function toggleUsuario(id,nuevo) {
+  try{await apiPut(`usuarios/${id}`,{estado:nuevo});const r=await apiGet('usuarios');usuarios=r.data;}
+  catch{const i=usuarios.findIndex(u=>u.id===id);if(i>=0)usuarios[i]={...usuarios[i],estado:nuevo};}
+  renderUsuarios();
+}
+async function deleteUsuario(id,username) {
+  if(!confirm(`¿Eliminar usuario "${username}"?`))return;
+  try{await apiDelete(`usuarios/${id}`);const r=await apiGet('usuarios');usuarios=r.data;}
+  catch{usuarios=usuarios.filter(u=>u.id!==id);}
+  renderUsuarios();showNotif('info','Eliminado',`${username} eliminado`);
+}
+async function submitRegistroAdmin() {
+  const u=document.getElementById('adminRegUsername').value.trim();
+  const n=document.getElementById('adminRegNombre').value.trim();
+  const e=document.getElementById('adminRegEmail').value.trim();
+  const p=document.getElementById('adminRegPassword').value;
+  const p2=document.getElementById('adminRegConfirm').value;
+  const rol=document.getElementById('adminRegRole').value;
+  if(!u||!n||!e||!p){showNotif('error','Error','Complete todos los campos');return;}
+  if(p!==p2){showNotif('error','Error','Las contraseñas no coinciden');return;}
+  if(p.length<6){showNotif('error','Error','Contraseña muy corta');return;}
+  try{await apiPost('usuarios',{username:u,nombre:n,email:e,password:p,rol,estado:'activo'});await loadUsuarios();}
+  catch{usuarios.push({id:Date.now(),username:u,nombre:n,email:e,rol,estado:'activo'});renderUsuarios();showNotif('info','Demo','Guardado en modo demo');}
+  closeModal('modalRegisterAdmin');showNotif('success','Creado','Usuario creado correctamente');
+}
+
+// ── PERFIL ───────────────────────────────────────────────
+function openPerfilModal() {
+  if(!currentUser)return;
+  document.getElementById('perfil_username').value=currentUser.username||'';
+  document.getElementById('perfil_rol').value=currentUser.rol||'';
+  document.getElementById('perfil_nombre').value=currentUser.nombre||'';
+  document.getElementById('perfil_email').value=currentUser.email||'';
+  const initials=(currentUser.nombre||'U').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  document.getElementById('profileAvatarLg').textContent=initials;
+  openModal('modalPerfil');
+}
+async function savePerfil() {
+  const nombre=document.getElementById('perfil_nombre').value.trim();
+  const email=document.getElementById('perfil_email').value.trim();
+  if(!nombre||!email){showNotif('error','Error','Nombre y email son requeridos');return;}
+  try{await apiPut(`usuarios/${currentUser.id}`,{nombre,email});currentUser={...currentUser,nombre,email};sessionStorage.setItem('sarc_user',JSON.stringify(currentUser));localStorage.setItem('sarc_user',JSON.stringify(currentUser));}
+  catch{currentUser={...currentUser,nombre,email};sessionStorage.setItem('sarc_user',JSON.stringify(currentUser));}
+  document.getElementById('sidebarUserName').textContent=nombre;
+  document.getElementById('topbarUser').textContent=nombre;
+  document.getElementById('sidebarAvatar').textContent=nombre.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  closeModal('modalPerfil');showNotif('success','Guardado','Perfil actualizado');
+}
+async function cambiarPassword() {
+  const actual=document.getElementById('pw_actual').value;
+  const nueva=document.getElementById('pw_nueva').value;
+  const conf=document.getElementById('pw_confirmar').value;
+  if(!actual||!nueva||!conf){showNotif('error','Error','Complete todos los campos');return;}
+  if(nueva!==conf){showNotif('error','Error','Las nuevas contraseñas no coinciden');return;}
+  if(nueva.length<6){showNotif('error','Error','La contraseña debe tener al menos 6 caracteres');return;}
+  try{await apiPut(`usuarios/${currentUser.id}/password`,{password_actual:actual,password_nueva:nueva});}
+  catch{showNotif('info','Demo','Contraseña actualizada (modo demo)');}
+  document.getElementById('pw_actual').value='';document.getElementById('pw_nueva').value='';document.getElementById('pw_confirmar').value='';
+  closeModal('modalCambiarPw');showNotif('success','Actualizado','Contraseña cambiada correctamente');
+}
+
+// ── REPORTES ─────────────────────────────────────────────
+function renderReportes() {
+  const data=asesores.map(a=>{const ra=rutas.filter(r=>getAsesorId(r)===a.id);const rc=ra.filter(r=>r.estado==='completada').length;const sa=satisfacciones.filter(s=>{const r=rutas.find(x=>x.id===(s.ruta_id??s.rutaId));return r&&getAsesorId(r)===a.id;});const prom=sa.length?(sa.reduce((t,s)=>t+parseInt(s.calificacion),0)/sa.length).toFixed(1):'N/A';return{a,total:ra.length,comp:rc,pend:ra.length-rc,prom};}).filter(x=>x.total>0);
+  document.getElementById('reporteAsesores').innerHTML=data.length===0?'<div class="empty-state"><i class="bi bi-inbox"></i><p>No hay datos</p></div>':`<table class="sarc-table"><thead><tr><th>Asesor</th><th>Tipo</th><th>Total</th><th>Completadas</th><th>Pendientes</th><th>Éxito</th><th>Satisfacción</th></tr></thead><tbody>${data.map(d=>`<tr><td>${d.a.nombre}</td><td>${d.a.tipo||'—'}</td><td>${d.total}</td><td><span class="sarc-badge success">${d.comp}</span></td><td><span class="sarc-badge warning">${d.pend}</span></td><td>${d.total?Math.round(d.comp/d.total*100):0}%</td><td>${d.prom==='N/A'?'—':d.prom+'⭐'}</td></tr>`).join('')}</tbody></table>`;
+  const tp={};clientes.forEach(c=>tp[c.tipo]=(tp[c.tipo]||0)+1);const tot=clientes.length||1;
+  document.getElementById('reporteClientes').innerHTML=Object.keys(tp).length===0?'<div class="empty-state"><i class="bi bi-buildings"></i><p>No hay clientes</p></div>':`<table class="sarc-table"><thead><tr><th>Tipo</th><th>Cantidad</th><th>Porcentaje</th></tr></thead><tbody>${Object.entries(tp).map(([t,c])=>`<tr><td>${t.charAt(0).toUpperCase()+t.slice(1)}</td><td>${c}</td><td><div class="d-flex align-items-center gap-2"><div class="progress flex-grow-1" style="height:6px"><div class="progress-bar" style="width:${Math.round(c/tot*100)}%;background:var(--sarc-primary)"></div></div>${Math.round(c/tot*100)}%</div></td></tr>`).join('')}</tbody></table>`;
+  updateReportCharts();updateSatisfaccionChart();
+}
+
+// ── EXPORT ───────────────────────────────────────────────
+function exportToExcel(data,filename) {
+  const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Datos');XLSX.writeFile(wb,filename+'.xlsx');
+}
+function exportAsesoresToExcel(){exportToExcel(asesores.map(a=>({Nombre:a.nombre,Email:a.email,Teléfono:a.telefono,Tipo:a.tipo,Zona:a.zona,Estado:a.estado})),'asesores_sarc');}
+function exportClientesToExcel(){exportToExcel(clientes.map(c=>({Nombre:c.nombre,NIT:c.nit,Tipo:c.tipo,Contacto:c.contacto,Email:c.email,Teléfono:c.telefono,Ciudad:c.ciudad,Zona:c.zona,Estado:c.estado})),'clientes_sarc');}
+function exportRutasToExcel(){exportToExcel(rutas.map(r=>({Asesor:r.asesor_nombre,Fecha:r.fecha,HoraInicio:r.hora_inicio,HoraFin:r.hora_fin,Zona:r.zona,Estado:r.estado,Vehículo:r.vehiculo,KmInicial:r.km_inicial,KmFinal:r.km_final})),'rutas_sarc');}
+function exportReportesToExcel(){exportToExcel(asesores.map(a=>{const ra=rutas.filter(r=>getAsesorId(r)===a.id);const rc=ra.filter(r=>r.estado==='completada').length;return{Asesor:a.nombre,Tipo:a.tipo,TotalRutas:ra.length,Completadas:rc,Pendientes:ra.length-rc,PorcentajeExito:ra.length?Math.round(rc/ra.length*100)+'%':'0%'};}), 'reporte_sarc');}
+
+
+// ════════════════════════════════════════════════════════
+//  MÓDULO GPS — Visitas con Geolocalización
+// ════════════════════════════════════════════════════════
+
+// ── Estado GPS ───────────────────────────────────────────
+const GPS = {
+  map: null,
+  watchId: null,
+  myMarker: null,
+  myCircle: null,
+  clienteMarkers: {},
+  routeLine: null,
+  trackPoints: [],
+
+  // Visita activa
+  visitaActiva: null,      // { clienteId, clienteNombre, horaEntrada, lat, lng, timerInterval }
+  visitasLog: [],          // historial de visitas completadas en la jornada
+
+  // Datos de la ruta seleccionada
+  rutaId: null,
+  clientesVisita: [],      // [{ id, nombre, direccion, estado:'pendiente'|'en-visita'|'realizada', horaEntrada, horaSalida, duracion, resultado, notas, lat, lng }]
+};
+
+// ── Inicializar tab de visitas ────────────────────────────
+function initVisitasTab() {
+  cargarRutasVisita();
+  if (!GPS.map) initMap();
+  updateVisitasBadge();
+}
+
+// Cargar rutas en-progreso y planificadas del día
+function cargarRutasVisita() {
+  const today = new Date().toISOString().split('T')[0];
+  const disponibles = rutas.filter(r =>
+    (r.estado === 'en-progreso' || r.estado === 'planificada') &&
+    r.fecha === today
+  );
+  const sel = document.getElementById('visitaRutaSelect');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Seleccione una ruta —</option>' +
+    disponibles.map(r => {
+      const a = asesores.find(x => x.id === getAsesorId(r));
+      return `<option value="${r.id}">${a?.nombre || r.asesor_nombre || 'Asesor'} — Zona ${r.zona} (${r.hora_inicio || '?'})</option>`;
+    }).join('');
+  if (prev) sel.value = prev;
+
+  if (!disponibles.length) {
+    // Mostrar rutas de cualquier fecha como fallback en demo
+    const todas = rutas.filter(r => r.estado !== 'completada' && r.estado !== 'cancelada').slice(0, 5);
+    if (todas.length) {
+      sel.innerHTML = '<option value="">— Seleccione una ruta —</option>' +
+        todas.map(r => {
+          const a = asesores.find(x => x.id === getAsesorId(r));
+          return `<option value="${r.id}">${a?.nombre || r.asesor_nombre || 'Asesor'} — ${r.zona} (${r.fecha})</option>`;
+        }).join('');
+    }
+  }
+}
+
+// ── Inicializar Mapa Leaflet ──────────────────────────────
+function initMap() {
+  GPS.map = L.map('gps-map', { zoomControl: true, attributionControl: true });
+  // Tile layer OpenStreetMap
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom: 19
+  }).addTo(GPS.map);
+
+  // Centro inicial en Colombia (Medellín)
+  GPS.map.setView([6.2442, -75.5812], 13);
+
+  // Intentar obtener posición del usuario
+  startWatchPosition();
+}
+
+// ── Seguimiento GPS en tiempo real ───────────────────────
+function startWatchPosition() {
+  if (!navigator.geolocation) {
+    showNotif('warning', 'GPS no disponible', 'Su navegador no soporta geolocalización');
+    return;
+  }
+  GPS.watchId = navigator.geolocation.watchPosition(
+    onPositionUpdate,
+    onPositionError,
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+  );
+}
+
+function stopWatchPosition() {
+  if (GPS.watchId !== null) {
+    navigator.geolocation.clearWatch(GPS.watchId);
+    GPS.watchId = null;
+  }
+}
+
+function onPositionUpdate(pos) {
+  const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+
+  // Actualizar mi marcador
+  const latlng = L.latLng(lat, lng);
+  if (!GPS.myMarker) {
+    GPS.myMarker = L.marker(latlng, { icon: createMyIcon(), zIndexOffset: 1000 })
+      .addTo(GPS.map)
+      .bindPopup('<b>📍 Mi ubicación actual</b>');
+    GPS.myCircle = L.circle(latlng, {
+      radius: accuracy, color: '#4F46E5', fillColor: '#4F46E5',
+      fillOpacity: 0.08, weight: 1.5
+    }).addTo(GPS.map);
+    GPS.map.setView(latlng, 15);
+  } else {
+    GPS.myMarker.setLatLng(latlng);
+    GPS.myCircle.setLatLng(latlng).setRadius(accuracy);
+  }
+
+  // Actualizar precisión en UI
+  document.getElementById('gpsAccuracy').innerHTML =
+    `<i class="bi bi-crosshair"></i> ±${Math.round(accuracy)}m`;
+
+  // Registrar punto de trayectoria
+  GPS.trackPoints.push([lat, lng]);
+  if (GPS.trackPoints.length > 1) {
+    if (GPS.routeLine) GPS.map.removeLayer(GPS.routeLine);
+    GPS.routeLine = L.polyline(GPS.trackPoints, {
+      color: '#4F46E5', weight: 3, opacity: 0.6, dashArray: '6 4'
+    }).addTo(GPS.map);
+  }
+
+  // Actualizar coords en barra activa
+  if (GPS.visitaActiva) {
+    document.getElementById('gpsActiveCoords').textContent =
+      `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    document.getElementById('finalizarGpsCoords').textContent =
+      `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  }
+
+  // Actualizar distancias en tarjetas de clientes
+  actualizarDistancias(lat, lng);
+}
+
+function onPositionError(err) {
+  const msgs = {
+    1: 'Permiso de ubicación denegado. Active el GPS en su dispositivo.',
+    2: 'Señal GPS no disponible.',
+    3: 'Tiempo de espera agotado para obtener ubicación.'
+  };
+  document.getElementById('gpsAccuracy').innerHTML =
+    `<i class="bi bi-crosshair"></i> Sin señal`;
+  if (err.code === 1) showNotif('error', 'GPS bloqueado', msgs[1]);
+}
+
+function centerMapOnMe() {
+  if (GPS.myMarker) {
+    GPS.map.setView(GPS.myMarker.getLatLng(), 16);
+  } else {
+    navigator.geolocation.getCurrentPosition(p => {
+      GPS.map.setView([p.coords.latitude, p.coords.longitude], 16);
+    }, () => showNotif('warning', 'GPS', 'No se pudo obtener la ubicación'));
+  }
+}
+
+// ── Íconos del mapa ───────────────────────────────────────
+function createMyIcon() {
+  return L.divIcon({
+    className: '',
+    html: `<div style="background:#4F46E5;width:20px;height:20px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(79,70,229,.7);"></div>`,
+    iconSize: [20, 20], iconAnchor: [10, 10]
+  });
+}
+function createClienteIcon(estado, num) {
+  const colors = { pendiente:'#F59E0B', 'en-visita':'#4F46E5', realizada:'#64748B' };
+  const bg = colors[estado] || '#F59E0B';
+  return L.divIcon({
+    className: '',
+    html: `<div style="background:${bg};color:#fff;width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;">
+      <span style="transform:rotate(45deg);font-weight:800;font-size:13px;">${num}</span>
+    </div>`,
+    iconSize: [34, 34], iconAnchor: [17, 34]
+  });
+}
+
+// ── Cargar clientes de la ruta seleccionada ───────────────
+function cargarClientesVisita() {
+  const rutaId = parseInt(document.getElementById('visitaRutaSelect').value);
+  if (!rutaId) {
+    GPS.rutaId = null; GPS.clientesVisita = [];
+    document.getElementById('visitaClientesList').innerHTML =
+      '<div class="empty-state"><i class="bi bi-map"></i><p>Seleccione una ruta</p></div>';
+    document.getElementById('visitaRutaInfo').classList.add('d-none');
+    document.getElementById('visitaProgressCard').classList.add('d-none');
+    limpiarMarcadoresClientes();
+    return;
+  }
+
+  const ruta = rutas.find(r => r.id === rutaId);
+  if (!ruta) return;
+  GPS.rutaId = rutaId;
+
+  // Info de la ruta
+  document.getElementById('visitaRutaInfo').classList.remove('d-none');
+  document.getElementById('visitaRutaZona').textContent  = '📍 ' + ruta.zona;
+  document.getElementById('visitaRutaEstado').textContent = ruta.estado;
+  document.getElementById('visitaRutaFecha').textContent  = formatDate(ruta.fecha);
+
+  // Cargar clientes (preservar estado de visitas ya iniciadas)
+  const ids = getClienteIds(ruta);
+  const prevMap = {};
+  GPS.clientesVisita.forEach(c => prevMap[c.id] = c);
+
+  GPS.clientesVisita = ids.map((cid, idx) => {
+    const c = clientes.find(x => x.id === cid);
+    if (!c) return null;
+    if (prevMap[cid]) return prevMap[cid]; // conservar estado
+    return {
+      id: cid, idx: idx + 1,
+      nombre: c.nombre, tipo: c.tipo,
+      direccion: c.direccion || '', ciudad: c.ciudad || '',
+      lat: null, lng: null,
+      estado: 'pendiente',
+      horaEntrada: null, horaSalida: null, duracion: null,
+      resultado: null, notas: ''
+    };
+  }).filter(Boolean);
+
+  renderClientesVisita();
+  colocarMarcadoresClientes();
+  document.getElementById('visitaProgressCard').classList.remove('d-none');
+  actualizarProgreso();
+}
+
+// ── Renderizar tarjetas de clientes ──────────────────────
+function renderClientesVisita() {
+  const el = document.getElementById('visitaClientesList');
+  if (!GPS.clientesVisita.length) {
+    el.innerHTML = '<div class="empty-state"><i class="bi bi-buildings"></i><p>No hay clientes en esta ruta</p></div>';
+    return;
+  }
+
+  el.innerHTML = GPS.clientesVisita.map(c => {
+    const stLabel = { pendiente:'⏳ Pendiente', 'en-visita':'🔵 En Visita', realizada:'✅ Realizada' }[c.estado] || '—';
+    const stClass = c.estado;
+    const esActiva = GPS.visitaActiva?.clienteId === c.id;
+
+    let acciones = '';
+    if (c.estado === 'pendiente') {
+      acciones = `<button class="btn-gps-start" onclick="iniciarVisita(${c.id})">
+        <i class="bi bi-play-circle-fill"></i> Iniciar Visita
+      </button>`;
+    } else if (c.estado === 'en-visita') {
+      acciones = `<button class="btn-gps-end" onclick="abrirFinalizarVisita(${c.id})">
+        <i class="bi bi-stop-circle-fill"></i> Finalizar Visita
+      </button>`;
+    } else if (c.estado === 'realizada') {
+      acciones = `<button class="btn btn-xs btn-outline-secondary" onclick="verDetalleVisita(${c.id})">
+        <i class="bi bi-eye me-1"></i>Ver detalle
+      </button>`;
+    }
+
+    const distEl = `<span class="dist-badge" id="dist-${c.id}"><i class="bi bi-rulers me-1"></i>—</span>`;
+
+    return `<div class="visit-card ${esActiva ? 'border-primary' : ''}">
+      <div class="visit-card-header">
+        <div>
+          <span style="font-size:.7rem;font-weight:700;color:var(--sarc-muted)">#${c.idx}</span>
+          <div class="fw-700" style="font-size:.9rem">${c.nombre}</div>
+          <div style="font-size:.75rem;color:var(--sarc-muted)">${c.tipo} · ${c.ciudad || 'N/A'}</div>
+        </div>
+        <span class="visit-status ${stClass}">${stLabel}</span>
+      </div>
+      ${c.direccion ? `<div style="font-size:.76rem;color:var(--sarc-muted);margin-bottom:8px"><i class="bi bi-geo me-1"></i>${c.direccion}</div>` : ''}
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          ${distEl}
+          ${c.horaEntrada ? `<span style="font-size:.72rem;color:var(--sarc-muted)"><i class="bi bi-clock me-1"></i>${c.horaEntrada}${c.horaSalida ? ' → ' + c.horaSalida : ''}</span>` : ''}
+          ${c.duracion ? `<span style="font-size:.72rem;color:#059669;font-weight:700"><i class="bi bi-stopwatch me-1"></i>${c.duracion}</span>` : ''}
+        </div>
+        <div>${acciones}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Colocar marcadores en el mapa ────────────────────────
+function colocarMarcadoresClientes() {
+  limpiarMarcadoresClientes();
+  const bounds = [];
+
+  GPS.clientesVisita.forEach((c, i) => {
+    // Generar coordenadas demo alrededor del centro o usar GPS.myMarker
+    const baseLat = GPS.myMarker ? GPS.myMarker.getLatLng().lat : 6.2442;
+    const baseLng = GPS.myMarker ? GPS.myMarker.getLatLng().lng : -75.5812;
+    const lat = baseLat + (Math.random() - 0.5) * 0.02;
+    const lng = baseLng + (Math.random() - 0.5) * 0.02;
+
+    c.lat = lat; c.lng = lng;
+
+    const marker = L.marker([lat, lng], { icon: createClienteIcon(c.estado, c.idx) })
+      .addTo(GPS.map)
+      .bindPopup(`<b>${c.nombre}</b><br><small>${c.tipo}</small><br><small>${c.direccion || ''}</small>`);
+
+    marker.on('click', () => {
+      GPS.map.setView([lat, lng], 17);
+    });
+
+    GPS.clienteMarkers[c.id] = { marker, lat, lng };
+    bounds.push([lat, lng]);
+  });
+
+  if (bounds.length > 0) {
+    GPS.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+  }
+}
+
+function limpiarMarcadoresClientes() {
+  Object.values(GPS.clienteMarkers).forEach(({ marker }) => GPS.map?.removeLayer(marker));
+  GPS.clienteMarkers = {};
+}
+
+// ── Calcular y mostrar distancias ────────────────────────
+function actualizarDistancias(myLat, myLng) {
+  GPS.clientesVisita.forEach(c => {
+    if (c.lat === null) return;
+    const d = GPS.map
+      ? GPS.map.distance([myLat, myLng], [c.lat, c.lng])
+      : haversine(myLat, myLng, c.lat, c.lng);
+    const el = document.getElementById(`dist-${c.id}`);
+    if (el) el.innerHTML = `<i class="bi bi-rulers me-1"></i>${formatDist(d)}`;
+  });
+}
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function formatDist(m) {
+  return m < 1000 ? `${Math.round(m)}m` : `${(m/1000).toFixed(1)}km`;
+}
+
+// ── INICIAR VISITA ────────────────────────────────────────
+function iniciarVisita(clienteId) {
+  // Solo una visita activa a la vez
+  if (GPS.visitaActiva) {
+    showNotif('warning', 'Visita en curso', `Primero finalice la visita de ${GPS.visitaActiva.clienteNombre}`);
+    return;
+  }
+
+  const c = GPS.clientesVisita.find(x => x.id === clienteId);
+  if (!c) return;
+
+  const ahora = new Date();
+  const horaStr = ahora.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+
+  c.estado = 'en-visita';
+  c.horaEntrada = horaStr;
+
+  // Actualizar marcador en mapa
+  if (GPS.clienteMarkers[clienteId]) {
+    GPS.clienteMarkers[clienteId].marker.setIcon(createClienteIcon('en-visita', c.idx));
+    GPS.map.setView([c.lat, c.lng], 17);
+  }
+
+  // Cambiar ruta a en-progreso
+  actualizarEstadoRutaEnProgreso();
+
+  // Arrancar timer
+  let segundos = 0;
+  const timerInterval = setInterval(() => {
+    segundos++;
+    const mm = String(Math.floor(segundos / 60)).padStart(2, '0');
+    const ss = String(segundos % 60).padStart(2, '0');
+    document.getElementById('gpsTimer').textContent = `${mm}:${ss}`;
+  }, 1000);
+
+  GPS.visitaActiva = { clienteId, clienteNombre: c.nombre, horaEntrada: horaStr, inicio: ahora, timerInterval };
+
+  // Mostrar barra activa
+  document.getElementById('gpsActiveBar').classList.add('show');
+  document.getElementById('gpsActiveClienteName').textContent = `Visitando: ${c.nombre}`;
+  document.getElementById('gpsTimer').textContent = '00:00';
+
+  renderClientesVisita();
+  actualizarProgreso();
+  updateVisitasBadge();
+  showNotif('success', '▶ Visita iniciada', `${c.nombre} — ${horaStr}`);
+  agregarTimeline(c, 'active');
+}
+
+// ── ABRIR MODAL FINALIZAR ─────────────────────────────────
+function abrirFinalizarVisita(clienteId) {
+  const c = GPS.clientesVisita.find(x => x.id === clienteId);
+  if (!c || !GPS.visitaActiva) return;
+
+  const ahora = new Date();
+  const horaStr = ahora.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+  const durMs = ahora - GPS.visitaActiva.inicio;
+  const durMin = Math.floor(durMs / 60000);
+  const durSec = Math.floor((durMs % 60000) / 1000);
+  const durStr = durMin > 0 ? `${durMin} min ${durSec} seg` : `${durSec} seg`;
+
+  document.getElementById('finalizarClienteNombre').textContent = c.nombre;
+  document.getElementById('finalizarVisitaDuracion').textContent = `Duración: ${durStr}`;
+  document.getElementById('finalizarHoraEntrada').textContent = c.horaEntrada || '—';
+  document.getElementById('finalizarHoraSalida').textContent = horaStr;
+  document.getElementById('finalizarDuracionFinal').textContent = durStr;
+
+  // GPS coords
+  const lat = GPS.myMarker?.getLatLng()?.lat;
+  const lng = GPS.myMarker?.getLatLng()?.lng;
+  document.getElementById('finalizarGpsCoords').textContent =
+    lat ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : 'No disponible';
+
+  // Guardar hora salida para usar al confirmar
+  GPS.visitaActiva._horaSalida = horaStr;
+  GPS.visitaActiva._durStr = durStr;
+  GPS.visitaActiva._durMs = durMs;
+
+  document.getElementById('finalizarNotas').value = '';
+  openModal('modalFinalizarVisita');
+}
+
+// Acceso desde barra activa
+function finalizarVisitaActiva() {
+  if (!GPS.visitaActiva) return;
+  abrirFinalizarVisita(GPS.visitaActiva.clienteId);
+}
+
+// ── CONFIRMAR FINALIZAR ───────────────────────────────────
+function confirmarFinalizarVisita() {
+  if (!GPS.visitaActiva) return;
+  const cid = GPS.visitaActiva.clienteId;
+  const c = GPS.clientesVisita.find(x => x.id === cid);
+  if (!c) return;
+
+  const resultado = document.getElementById('finalizarResultado').value;
+  const notas = document.getElementById('finalizarNotas').value.trim();
+  const horaSalida = GPS.visitaActiva._horaSalida;
+  const durStr = GPS.visitaActiva._durStr;
+
+  // Actualizar estado del cliente
+  c.estado = 'realizada';
+  c.horaSalida = horaSalida;
+  c.duracion = durStr;
+  c.resultado = resultado;
+  c.notas = notas;
+
+  // Guardar en log de visitas
+  GPS.visitasLog.push({
+    clienteId: cid, clienteNombre: c.nombre,
+    horaEntrada: c.horaEntrada, horaSalida,
+    duracion: durStr, resultado, notas,
+    lat: GPS.myMarker?.getLatLng()?.lat,
+    lng: GPS.myMarker?.getLatLng()?.lng
+  });
+
+  // Limpiar visita activa
+  clearInterval(GPS.visitaActiva.timerInterval);
+  GPS.visitaActiva = null;
+  document.getElementById('gpsActiveBar').classList.remove('show');
+  document.getElementById('gpsTimer').textContent = '00:00';
+
+  // Actualizar marcador
+  if (GPS.clienteMarkers[cid]) {
+    GPS.clienteMarkers[cid].marker.setIcon(createClienteIcon('realizada', c.idx));
+    GPS.clienteMarkers[cid].marker.setPopupContent(
+      `<b>✅ ${c.nombre}</b><br><small>${resultado}</small><br><small>${c.horaEntrada} → ${horaSalida} (${durStr})</small>`
+    );
+  }
+
+  // Verificar si todas las visitas están realizadas
+  const todas = GPS.clientesVisita.every(x => x.estado === 'realizada');
+  if (todas) {
+    setTimeout(() => {
+      showNotif('success', '🎉 ¡Ruta completa!', 'Todas las visitas fueron realizadas');
+      if (GPS.rutaId) completarRutaDesdeGPS(GPS.rutaId);
+    }, 500);
+  }
+
+  closeModal('modalFinalizarVisita');
+  renderClientesVisita();
+  actualizarProgreso();
+  updateVisitasBadge();
+  agregarTimeline(c, 'done');
+  actualizarResumenSesion();
+  renderDashVisitasGPS();
+  showNotif('success', '✅ Visita realizada', `${c.nombre} — ${durStr}`);
+
+  // Intentar guardar en API
+  guardarVisitaEnAPI(c);
+}
+
+// ── Completar ruta automáticamente ───────────────────────
+async function completarRutaDesdeGPS(rutaId) {
+  const horaFin = new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+  try {
+    await apiPut(`rutas/${rutaId}`, { estado: 'completada', hora_fin: horaFin });
+    const r = await apiGet('rutas'); rutas = r.data;
+  } catch {
+    const i = rutas.findIndex(x => x.id === rutaId);
+    if (i >= 0) rutas[i] = { ...rutas[i], estado: 'completada', hora_fin: horaFin };
+  }
+  cargarRutasVisita();
+  refreshDashboard();
+  updateCharts();
+}
+
+// ── Marcar ruta como en-progreso al iniciar primera visita ─
+async function actualizarEstadoRutaEnProgreso() {
+  if (!GPS.rutaId) return;
+  const ruta = rutas.find(r => r.id === GPS.rutaId);
+  if (!ruta || ruta.estado !== 'planificada') return;
+  try {
+    await apiPut(`rutas/${GPS.rutaId}`, { estado: 'en-progreso' });
+    const r = await apiGet('rutas'); rutas = r.data;
+  } catch {
+    const i = rutas.findIndex(x => x.id === GPS.rutaId);
+    if (i >= 0) rutas[i] = { ...rutas[i], estado: 'en-progreso' };
+  }
+  cargarRutasVisita();
+}
+
+// ── Guardar visita en API (observaciones de la ruta) ──────
+async function guardarVisitaEnAPI(c) {
+  if (!GPS.rutaId) return;
+  // 1. Guardar en tabla visitas_gps
+  const lat = GPS.myMarker?.getLatLng()?.lat ?? null;
+  const lng = GPS.myMarker?.getLatLng()?.lng ?? null;
+  const durMin = c.duracion
+    ? (() => { const p = c.duracion.match(/(\d+)\s*min/); return p ? parseInt(p[1]) : 0; })()
+    : 0;
+  try {
+    await apiPost('visitas', {
+      ruta_id:     GPS.rutaId,
+      cliente_id:  c.id,
+      hora_entrada: c.horaEntrada || '',
+      hora_salida:  c.horaSalida  || '',
+      duracion_min: durMin,
+      lat_entrada: GPS.visitasLog.find(v=>v.clienteId===c.id)?.lat ?? null,
+      lng_entrada: GPS.visitasLog.find(v=>v.clienteId===c.id)?.lng ?? null,
+      lat_salida:  lat, lng_salida: lng,
+      resultado:   c.resultado || 'exitosa',
+      notas:       c.notas || ''
+    });
+  } catch { /* modo demo — continúa sin API */ }
+
+  // 2. Actualizar observaciones de la ruta con resumen
+  const resumen = GPS.visitasLog.map(v =>
+    `[${v.horaEntrada}→${v.horaSalida}] ${v.clienteNombre}: ${v.resultado}${v.notas ? ' — ' + v.notas : ''}`
+  ).join('\n');
+  try {
+    await apiPut(`rutas/${GPS.rutaId}`, { observaciones: resumen });
+    const r = await apiGet('rutas'); rutas = r.data;
+  } catch {
+    const i = rutas.findIndex(x => x.id === GPS.rutaId);
+    if (i >= 0) rutas[i] = { ...rutas[i], observaciones: resumen };
+  }
+}
+
+// ── Actualizar barra de progreso ─────────────────────────
+function actualizarProgreso() {
+  const total = GPS.clientesVisita.length;
+  const realizadas = GPS.clientesVisita.filter(c => c.estado === 'realizada').length;
+  const pct = total ? Math.round(realizadas / total * 100) : 0;
+  document.getElementById('visitaProgressBadge').textContent = `${realizadas}/${total}`;
+  document.getElementById('visitaProgressBar').style.width = pct + '%';
+  document.getElementById('visitaProgressDone').textContent = `${realizadas} realizadas`;
+  document.getElementById('visitaProgressPending').textContent = `${total - realizadas} pendientes`;
+}
+
+// ── Badge en sidebar ──────────────────────────────────────
+function updateVisitasBadge() {
+  const enVisita = GPS.clientesVisita.filter(c => c.estado === 'en-visita').length;
+  const badge = document.getElementById('visitasBadge');
+  if (badge) {
+    badge.style.display = enVisita > 0 ? 'inline-block' : 'none';
+    badge.textContent = enVisita;
+  }
+}
+
+// ── Timeline ──────────────────────────────────────────────
+function agregarTimeline(c, tipo) {
+  const tl = document.getElementById('visitaTimeline');
+  const hora = new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+  const textos = {
+    active: { label: 'Visita iniciada', meta: `Ingresó a las ${hora}` },
+    done:   { label: '✅ Visita realizada', meta: `${c.horaEntrada} → ${c.horaSalida} · ${c.duracion} · ${c.resultado}` }
+  };
+  const t = textos[tipo];
+  const item = document.createElement('div');
+  item.className = `visit-tl-item ${tipo === 'done' ? 'done' : 'active'}`;
+  item.innerHTML = `
+    <div class="visit-tl-time">${hora}</div>
+    <div class="visit-tl-content">
+      <div class="visit-tl-name">${c.nombre}</div>
+      <div class="visit-tl-meta">${t.meta}</div>
+    </div>`;
+  // Limpiar mensaje vacío
+  if (tl.querySelector('.text-muted')) tl.innerHTML = '';
+  tl.insertBefore(item, tl.firstChild);
+}
+
+// ── Ver detalle de visita realizada ─────────────────────
+function verDetalleVisita(clienteId) {
+  const c = GPS.clientesVisita.find(x => x.id === clienteId);
+  if (!c) return;
+  const resIcons = {
+    exitosa:'✅ Exitosa', sin_contacto:'📵 Sin contacto',
+    reagendar:'📅 Reagendar', negativa:'❌ Negativa'
+  };
+  document.getElementById('detalleVisitaContent').innerHTML = `
+    <div class="text-center mb-3">
+      <div style="font-size:2rem">${c.resultado==='exitosa'?'✅':c.resultado==='negativa'?'❌':'📋'}</div>
+      <div class="fw-800 mt-1" style="font-size:1.05rem">${c.nombre}</div>
+      <div class="text-muted" style="font-size:.82rem">${c.tipo} · ${c.ciudad||''}</div>
+    </div>
+    <div class="row g-2 mb-3">
+      <div class="col-6"><div style="font-size:.7rem;color:var(--sarc-muted)">RESULTADO</div>
+        <span class="sarc-badge success">${resIcons[c.resultado]||c.resultado}</span></div>
+      <div class="col-6"><div style="font-size:.7rem;color:var(--sarc-muted)">DURACIÓN</div>
+        <div class="fw-700" style="font-family:'DM Mono',monospace">${c.duracion||'—'}</div></div>
+      <div class="col-6"><div style="font-size:.7rem;color:var(--sarc-muted)">HORA ENTRADA</div>
+        <div class="fw-700" style="font-family:'DM Mono',monospace">${c.horaEntrada||'—'}</div></div>
+      <div class="col-6"><div style="font-size:.7rem;color:var(--sarc-muted)">HORA SALIDA</div>
+        <div class="fw-700" style="font-family:'DM Mono',monospace">${c.horaSalida||'—'}</div></div>
+    </div>
+    ${c.notas ? `<div><div style="font-size:.7rem;color:var(--sarc-muted);margin-bottom:4px">NOTAS</div>
+      <div class="sarc-card" style="background:#F8FAFC;padding:10px 14px;font-size:.85rem">${c.notas}</div></div>` : ''}`;
+  openModal('modalDetalleVisita');
+}
+
+// ── Limpiar GPS al cerrar sesión ─────────────────────────
+const _origLogout = logout;
+window.logout = function() {
+  stopWatchPosition();
+  if (GPS.visitaActiva) clearInterval(GPS.visitaActiva.timerInterval);
+  _origLogout();
+};
+
+// ── Actualizar tabla resumen de sesión ───────────────────
+function actualizarResumenSesion() {
+  const card = document.getElementById('visitaResumenCard');
+  const body = document.getElementById('visitaResumenBody');
+  const realizadas = GPS.visitasLog;
+  if (!realizadas.length) { card.classList.add('d-none'); return; }
+  card.classList.remove('d-none');
+  const resIcons = { exitosa:'✅', sin_contacto:'📵', reagendar:'📅', negativa:'❌' };
+  body.innerHTML = realizadas.map((v, i) => `
+    <tr class="${i%2===1?'':''}">
+      <td class="fw-600">${v.clienteNombre}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:.8rem">${v.horaEntrada}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:.8rem">${v.horaSalida}</td>
+      <td><span class="sarc-badge info">${v.duracion}</span></td>
+      <td>${resIcons[v.resultado]||''} ${v.resultado}</td>
+    </tr>`).join('');
+}
+
+// ── Dashboard: widget GPS ────────────────────────────────
+function renderDashVisitasGPS() {
+  const el = document.getElementById('dashVisitasGPS');
+  if (!el) return;
+  // Contar visitas de hoy (del log de sesión y de las rutas)
+  const today = new Date().toISOString().split('T')[0];
+  const visitasHoy = GPS.visitasLog.length;
+
+  // st7 — contador de visitas hoy
+  const st7 = document.getElementById('st7');
+  if (st7) st7.textContent = visitasHoy;
+
+  if (!visitasHoy) {
+    el.innerHTML = '<div class="empty-state py-3"><i class="bi bi-geo-alt" style="font-size:1.6rem"></i><p style="font-size:.83rem">No hay visitas GPS registradas en esta sesión</p></div>';
+    return;
+  }
+  const resIcons = { exitosa:'✅', sin_contacto:'📵', reagendar:'📅', negativa:'❌' };
+  el.innerHTML = `<div class="table-responsive"><table class="sarc-table">
+    <thead><tr><th>Cliente</th><th>Entrada</th><th>Salida</th><th>Duración</th><th>Resultado</th><th>Notas</th></tr></thead>
+    <tbody>${GPS.visitasLog.map((v,i) => `<tr class="${i%2===1?'':''}" >
+      <td class="fw-600">${v.clienteNombre}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:.78rem">${v.horaEntrada}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:.78rem">${v.horaSalida}</td>
+      <td><span class="sarc-badge success">${v.duracion}</span></td>
+      <td>${resIcons[v.resultado]||''} ${v.resultado}</td>
+      <td style="font-size:.78rem;color:var(--sarc-muted);max-width:160px">${v.notas||'—'}</td>
+    </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+// ── Exportar visitas GPS a Excel ─────────────────────────
+function exportarVisitasExcel() {
+  if (!GPS.visitasLog.length) {
+    showNotif('warning','Sin datos','No hay visitas registradas en esta sesión');
+    return;
+  }
+  const data = GPS.visitasLog.map(v => ({
+    'Cliente':      v.clienteNombre,
+    'Hora Entrada': v.horaEntrada,
+    'Hora Salida':  v.horaSalida,
+    'Duración':     v.duracion,
+    'Resultado':    v.resultado,
+    'Notas':        v.notas || '',
+    'Latitud Salida':  v.lat  ? v.lat.toFixed(6)  : '',
+    'Longitud Salida': v.lng  ? v.lng.toFixed(6)  : '',
+    'Ruta ID':      GPS.rutaId || ''
+  }));
+  exportToExcel(data, `visitas_gps_${new Date().toISOString().split('T')[0]}`);
+  showNotif('success','Exportado','Reporte de visitas GPS descargado');
+}
+
+// ── Hook: actualizar resumen y dashboard al confirmar visita
+const _origConfirmar = confirmarFinalizarVisita;
+// Ya está definida arriba; solo extendemos el flujo post-confirm
+// Se llama actualizarResumenSesion() y renderDashVisitasGPS() desde confirmarFinalizarVisita
+
+
+window.addEventListener('online',  ()=>document.getElementById('offlineBar').style.display='none');
+window.addEventListener('offline', ()=>document.getElementById('offlineBar').style.display='block');
+
+// ── INIT ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', ()=>{
+  showLoginPanel('login');
+  if(currentUser){ showMainApp(); initializeApp(); }
+  // Link perfil modal button
+  document.getElementById('modalPerfil').querySelector('.btn-sarc').onclick = savePerfil;
+});
+</script>
+</body>
+</html>
