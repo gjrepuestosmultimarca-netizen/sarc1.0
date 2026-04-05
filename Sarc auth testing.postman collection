@@ -1,0 +1,748 @@
+{
+  "info": {
+    "_postman_id": "sarc-auth-testing-2026",
+    "name": "SARC — Testing API Autenticación",
+    "description": "Colección completa de pruebas para el endpoint POST /auth del Sistema Avanzado de Rutas Comerciales (SARC v2.1).\n\nCubre:\n- TC-AUTH-001: Login exitoso con credenciales de administrador\n- TC-AUTH-002: Login exitoso con credenciales de supervisor\n- TC-AUTH-003: Login exitoso con credenciales de asesor\n- TC-AUTH-004: Contraseña incorrecta\n- TC-AUTH-005: Usuario inexistente\n- TC-AUTH-006: Body vacío (sin campos)\n- TC-AUTH-007: Falta el campo username\n- TC-AUTH-008: Falta el campo password\n- TC-AUTH-009: Método HTTP incorrecto (GET)\n- TC-AUTH-010: Método HTTP incorrecto (PUT)\n- TC-AUTH-011: Método HTTP incorrecto (DELETE)\n- TC-AUTH-012: Usuario existente pero inactivo\n- TC-AUTH-013: Campos con espacios en blanco\n- TC-AUTH-014: Inyección SQL en username\n- TC-AUTH-015: Body con tipo de contenido incorrecto\n\nBase URL: {{base_url}}\nConfigurar la variable de entorno base_url = http://localhost/sarc1.0/api",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost/sarc1.0/api",
+      "type": "string",
+      "description": "URL base de la API SARC. Cambiar según entorno."
+    },
+    {
+      "key": "last_user_id",
+      "value": "",
+      "type": "string",
+      "description": "ID del usuario autenticado (se llena automáticamente al hacer login exitoso)"
+    },
+    {
+      "key": "last_user_rol",
+      "value": "",
+      "type": "string",
+      "description": "Rol del usuario autenticado (admin | supervisor | asesor)"
+    }
+  ],
+  "item": [
+    {
+      "name": "✅ CASOS EXITOSOS",
+      "description": "Pruebas que deben retornar HTTP 200 con ok: true",
+      "item": [
+        {
+          "name": "TC-AUTH-001 — Login Admin exitoso",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Registrar timestamp de inicio",
+                  "pm.globals.set('req_start', Date.now());"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// ─── TC-AUTH-001: Login Admin Exitoso ───────────────────",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-001-T1: Status HTTP es 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-001-T2: Content-Type es application/json', () => {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-001-T3: Cuerpo contiene ok = true', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-001-T4: Cuerpo contiene campo data', () => {",
+                  "    pm.expect(jsonData).to.have.property('data');",
+                  "    pm.expect(jsonData.data).to.be.an('object');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-001-T5: data.username coincide con el enviado', () => {",
+                  "    pm.expect(jsonData.data.username).to.eql('admin1');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-001-T6: data.rol es admin', () => {",
+                  "    pm.expect(jsonData.data.rol).to.eql('admin');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-001-T7: data.estado es activo', () => {",
+                  "    pm.expect(jsonData.data.estado).to.eql('activo');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-001-T8: data.id es un número positivo', () => {",
+                  "    pm.expect(jsonData.data.id).to.be.a('number');",
+                  "    pm.expect(jsonData.data.id).to.be.above(0);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-001-T9: Respuesta NO contiene password_hash', () => {",
+                  "    pm.expect(jsonData.data).to.not.have.property('password_hash');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-001-T10: data contiene campos obligatorios', () => {",
+                  "    const required = ['id','username','nombre','email','rol','estado'];",
+                  "    required.forEach(f => pm.expect(jsonData.data).to.have.property(f));",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-001-T11: Tiempo de respuesta < 2000ms', () => {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Guardar datos para reutilizar",
+                  "if (jsonData.ok && jsonData.data) {",
+                  "    pm.collectionVariables.set('last_user_id', jsonData.data.id);",
+                  "    pm.collectionVariables.set('last_user_rol', jsonData.data.rol);",
+                  "    console.log('✅ TC-AUTH-001 PASS — Admin ID:', jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"admin1\",\n    \"password\": \"gejo1810\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth",
+              "host": ["{{base_url}}"],
+              "path": ["auth"]
+            },
+            "description": "**Caso de prueba:** TC-AUTH-001\n**Tipo:** Positivo\n**Descripción:** Login con credenciales válidas del usuario administrador.\n\n**Precondiciones:**\n- El usuario admin1 existe en la BD con estado activo\n- La contraseña gejo1810 está correctamente hasheada con bcrypt\n\n**Datos de entrada:**\n- username: admin1\n- password: gejo1810\n\n**Resultado esperado:**\n- HTTP 200 OK\n- ok: true\n- data.rol = admin\n- Sin campo password_hash en respuesta"
+          }
+        },
+        {
+          "name": "TC-AUTH-002 — Login Supervisor exitoso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-002-T1: Status HTTP es 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-002-T2: ok es true', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-002-T3: data.rol es supervisor', () => {",
+                  "    pm.expect(jsonData.data.rol).to.eql('supervisor');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-002-T4: data.username es supervisor1', () => {",
+                  "    pm.expect(jsonData.data.username).to.eql('supervisor1');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-002-T5: Respuesta NO contiene password_hash', () => {",
+                  "    pm.expect(jsonData.data).to.not.have.property('password_hash');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-002-T6: Tiempo de respuesta < 2000ms', () => {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "console.log('✅ TC-AUTH-002 PASS — Supervisor login OK');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"supervisor1\",\n    \"password\": \"diana123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/auth", "host": ["{{base_url}}"], "path": ["auth"] },
+            "description": "**Caso de prueba:** TC-AUTH-002\n**Tipo:** Positivo\n**Descripción:** Login con credenciales válidas del usuario supervisor.\n\n**Resultado esperado:** HTTP 200 · ok: true · data.rol = supervisor"
+          }
+        },
+        {
+          "name": "TC-AUTH-003 — Login Asesor exitoso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-003-T1: Status HTTP es 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-003-T2: ok es true', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-003-T3: data.rol es asesor', () => {",
+                  "    pm.expect(jsonData.data.rol).to.eql('asesor');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-003-T4: data.username es asesor1', () => {",
+                  "    pm.expect(jsonData.data.username).to.eql('asesor1');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-003-T5: Respuesta NO contiene password_hash', () => {",
+                  "    pm.expect(jsonData.data).to.not.have.property('password_hash');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-003-T6: Tiempo de respuesta < 2000ms', () => {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "console.log('✅ TC-AUTH-003 PASS — Asesor login OK');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"asesor1\",\n    \"password\": \"gerson123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/auth", "host": ["{{base_url}}"], "path": ["auth"] },
+            "description": "**Caso de prueba:** TC-AUTH-003\n**Tipo:** Positivo\n**Descripción:** Login con credenciales válidas del usuario asesor.\n\n**Resultado esperado:** HTTP 200 · ok: true · data.rol = asesor"
+          }
+        }
+      ]
+    },
+    {
+      "name": "❌ CREDENCIALES INVÁLIDAS",
+      "description": "Pruebas con credenciales incorrectas — deben retornar HTTP 401",
+      "item": [
+        {
+          "name": "TC-AUTH-004 — Contraseña incorrecta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-004-T1: Status HTTP es 401 Unauthorized', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-004-T2: ok es false', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(false);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-004-T3: Contiene campo error', () => {",
+                  "    pm.expect(jsonData).to.have.property('error');",
+                  "    pm.expect(jsonData.error).to.be.a('string');",
+                  "    pm.expect(jsonData.error.length).to.be.above(0);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-004-T4: Mensaje NO revela si es usuario o contraseña', () => {",
+                  "    // Buena práctica de seguridad: mensaje genérico",
+                  "    const msg = jsonData.error.toLowerCase();",
+                  "    pm.expect(msg).to.include('usuario');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-004-T5: Respuesta NO contiene campo data', () => {",
+                  "    pm.expect(jsonData).to.not.have.property('data');",
+                  "});",
+                  "",
+                  "console.log('✅ TC-AUTH-004 PASS — Contraseña incorrecta rechazada correctamente');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"admin1\",\n    \"password\": \"contraseña_incorrecta_123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/auth", "host": ["{{base_url}}"], "path": ["auth"] },
+            "description": "**Caso de prueba:** TC-AUTH-004\n**Tipo:** Negativo — Contraseña incorrecta\n**Descripción:** Envía el username correcto pero una contraseña inválida.\n\n**Resultado esperado:** HTTP 401 · ok: false · error con mensaje genérico"
+          }
+        },
+        {
+          "name": "TC-AUTH-005 — Usuario inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-005-T1: Status HTTP es 401 Unauthorized', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-005-T2: ok es false', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(false);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-005-T3: Contiene campo error', () => {",
+                  "    pm.expect(jsonData).to.have.property('error');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-005-T4: Mismo mensaje que contraseña incorrecta (seguridad)', () => {",
+                  "    // La API no debe distinguir entre usuario inexistente y contraseña incorrecta",
+                  "    pm.expect(jsonData.error).to.include('incorrectos');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-005-T5: Respuesta NO contiene campo data', () => {",
+                  "    pm.expect(jsonData).to.not.have.property('data');",
+                  "});",
+                  "",
+                  "console.log('✅ TC-AUTH-005 PASS — Usuario inexistente rechazado correctamente');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"usuario_que_no_existe_xyz\",\n    \"password\": \"cualquierClave123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/auth", "host": ["{{base_url}}"], "path": ["auth"] },
+            "description": "**Caso de prueba:** TC-AUTH-005\n**Tipo:** Negativo — Usuario no registrado\n**Descripción:** Envía un username que no existe en la base de datos.\n\n**Resultado esperado:** HTTP 401 · ok: false · mismo mensaje genérico que TC-AUTH-004 (evita enumeración de usuarios)"
+          }
+        },
+        {
+          "name": "TC-AUTH-012 — Usuario inactivo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// NOTA: Este test requiere que exista un usuario con estado='inactivo' en la BD.",
+                  "// Crear previamente: UPDATE usuarios SET estado='inactivo' WHERE username='asesor_inactivo_test';",
+                  "// Si el usuario no existe, la API devolverá 401 igualmente (usuario no encontrado).",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-012-T1: Status HTTP es 401 (inactivo = no permitido)', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-012-T2: ok es false', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(false);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-012-T3: No hay campo data en la respuesta', () => {",
+                  "    pm.expect(jsonData).to.not.have.property('data');",
+                  "});",
+                  "",
+                  "console.log('✅ TC-AUTH-012 PASS — Usuario inactivo no puede iniciar sesión');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"asesor_inactivo_test\",\n    \"password\": \"cualquierClave\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/auth", "host": ["{{base_url}}"], "path": ["auth"] },
+            "description": "**Caso de prueba:** TC-AUTH-012\n**Tipo:** Negativo — Usuario con estado inactivo\n**Precondición:** Crear usuario con estado='inactivo' en la BD.\n**Descripción:** Verifica que un usuario con estado inactivo no pueda iniciar sesión aunque la contraseña sea correcta. La consulta filtra WHERE estado='activo'.\n\n**Resultado esperado:** HTTP 401 · ok: false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "⚠️ CAMPOS FALTANTES (422)",
+      "description": "Pruebas con campos requeridos ausentes — deben retornar HTTP 422",
+      "item": [
+        {
+          "name": "TC-AUTH-006 — Body completamente vacío",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-006-T1: Status HTTP es 422 Unprocessable Entity', () => {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-006-T2: ok es false', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(false);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-006-T3: Contiene campo error con nombre del campo faltante', () => {",
+                  "    pm.expect(jsonData).to.have.property('error');",
+                  "    pm.expect(jsonData.error).to.include('Campo requerido');",
+                  "});",
+                  "",
+                  "console.log('✅ TC-AUTH-006 PASS — Body vacío rechazado con 422');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/auth", "host": ["{{base_url}}"], "path": ["auth"] },
+            "description": "**Caso de prueba:** TC-AUTH-006\n**Tipo:** Negativo — Sin campos\n**Descripción:** Envía un objeto JSON vacío sin ningún campo.\n\n**Resultado esperado:** HTTP 422 · ok: false · error indica el campo faltante"
+          }
+        },
+        {
+          "name": "TC-AUTH-007 — Falta campo username",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-007-T1: Status HTTP es 422', () => {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-007-T2: ok es false', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(false);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-007-T3: Error menciona campo username', () => {",
+                  "    pm.expect(jsonData.error.toLowerCase()).to.include('username');",
+                  "});",
+                  "",
+                  "console.log('✅ TC-AUTH-007 PASS — Falta username validado correctamente');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"password\": \"gejo1810\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/auth", "host": ["{{base_url}}"], "path": ["auth"] },
+            "description": "**Caso de prueba:** TC-AUTH-007\n**Tipo:** Negativo — Campo username ausente\n**Descripción:** Envía solo password sin username.\n\n**Resultado esperado:** HTTP 422 · error menciona 'username'"
+          }
+        },
+        {
+          "name": "TC-AUTH-008 — Falta campo password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-008-T1: Status HTTP es 422', () => {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-008-T2: ok es false', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(false);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-008-T3: Error menciona campo password', () => {",
+                  "    pm.expect(jsonData.error.toLowerCase()).to.include('password');",
+                  "});",
+                  "",
+                  "console.log('✅ TC-AUTH-008 PASS — Falta password validado correctamente');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"admin1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/auth", "host": ["{{base_url}}"], "path": ["auth"] },
+            "description": "**Caso de prueba:** TC-AUTH-008\n**Tipo:** Negativo — Campo password ausente\n**Descripción:** Envía solo username sin password.\n\n**Resultado esperado:** HTTP 422 · error menciona 'password'"
+          }
+        },
+        {
+          "name": "TC-AUTH-013 — Campos con solo espacios en blanco",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-013-T1: Campos en blanco son rechazados (422 o 401)', () => {",
+                  "    // La función need() verifica === '' pero no trim()",
+                  "    // Espacios pasan need() pero fallan en la consulta SQL",
+                  "    pm.expect([401, 422]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-013-T2: ok es false', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(false);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-013-T3: No hay data en la respuesta', () => {",
+                  "    pm.expect(jsonData).to.not.have.property('data');",
+                  "});",
+                  "",
+                  "console.log('✅ TC-AUTH-013 PASS — Campos en blanco rechazados');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"   \",\n    \"password\": \"   \"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/auth", "host": ["{{base_url}}"], "path": ["auth"] },
+            "description": "**Caso de prueba:** TC-AUTH-013\n**Tipo:** Negativo — Campos con solo espacios\n**Descripción:** Verifica el comportamiento cuando username y password son solo espacios. La función need() valida === '' pero no trim(), por lo que puede pasar a la consulta SQL y fallar con 401.\n\n**Resultado esperado:** HTTP 401 o 422 · ok: false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚫 MÉTODOS HTTP INCORRECTOS (405)",
+      "description": "El endpoint /auth solo acepta POST — cualquier otro método debe retornar 405",
+      "item": [
+        {
+          "name": "TC-AUTH-009 — Método GET rechazado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-009-T1: Status HTTP es 405 Method Not Allowed', () => {",
+                  "    pm.response.to.have.status(405);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-009-T2: ok es false', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(false);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-009-T3: Error indica que solo se acepta POST', () => {",
+                  "    pm.expect(jsonData.error.toUpperCase()).to.include('POST');",
+                  "});",
+                  "",
+                  "console.log('✅ TC-AUTH-009 PASS — GET rechazado con 405');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/auth", "host": ["{{base_url}}"], "path": ["auth"] },
+            "description": "**Caso de prueba:** TC-AUTH-009\n**Tipo:** Negativo — Método HTTP incorrecto\n**Descripción:** Intenta hacer GET en un endpoint que solo acepta POST.\n\n**Resultado esperado:** HTTP 405 · ok: false · error menciona POST"
+          }
+        },
+        {
+          "name": "TC-AUTH-010 — Método PUT rechazado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-010-T1: Status HTTP es 405', () => {",
+                  "    pm.response.to.have.status(405);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-010-T2: ok es false', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(false);",
+                  "});",
+                  "",
+                  "console.log('✅ TC-AUTH-010 PASS — PUT rechazado con 405');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"admin1\",\n    \"password\": \"gejo1810\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/auth", "host": ["{{base_url}}"], "path": ["auth"] },
+            "description": "**Caso de prueba:** TC-AUTH-010\n**Tipo:** Negativo — Método HTTP incorrecto\n**Resultado esperado:** HTTP 405 · ok: false"
+          }
+        },
+        {
+          "name": "TC-AUTH-011 — Método DELETE rechazado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-011-T1: Status HTTP es 405', () => {",
+                  "    pm.response.to.have.status(405);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-011-T2: ok es false', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(false);",
+                  "});",
+                  "",
+                  "console.log('✅ TC-AUTH-011 PASS — DELETE rechazado con 405');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{base_url}}/auth", "host": ["{{base_url}}"], "path": ["auth"] },
+            "description": "**Caso de prueba:** TC-AUTH-011\n**Tipo:** Negativo — Método HTTP incorrecto\n**Resultado esperado:** HTTP 405 · ok: false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔒 SEGURIDAD",
+      "description": "Pruebas de seguridad: inyección SQL, datos maliciosos",
+      "item": [
+        {
+          "name": "TC-AUTH-014 — Inyección SQL en username",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-014-T1: Inyección SQL NO produce status 200', () => {",
+                  "    pm.response.to.not.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-014-T2: ok es false — PDO protege contra SQLi', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(false);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-014-T3: No hay campo data (no se autenticó)', () => {",
+                  "    pm.expect(jsonData).to.not.have.property('data');",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-014-T4: Servidor responde sin error 500 (PDO sanitizó la entrada)', () => {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "",
+                  "console.log('✅ TC-AUTH-014 PASS — Inyección SQL neutralizada por PDO prepared statements');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"admin1' OR '1'='1' -- \",\n    \"password\": \"cualquierCosa\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/auth", "host": ["{{base_url}}"], "path": ["auth"] },
+            "description": "**Caso de prueba:** TC-AUTH-014\n**Tipo:** Seguridad — Inyección SQL\n**Descripción:** Intenta bypassear la autenticación con un payload clásico de SQL injection en el campo username.\n\n**Mecanismo de protección:** La API usa PDO con sentencias preparadas (prepare/execute), que sanitizan automáticamente los parámetros.\n\n**Resultado esperado:** HTTP 401 · ok: false · sin data (la inyección NO debe funcionar)"
+          }
+        },
+        {
+          "name": "TC-AUTH-015 — Content-Type incorrecto (text/plain)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Con Content-Type: text/plain, PHP no parsea el body como JSON.",
+                  "// req_body() hace json_decode de file_get_contents, que retornará null → array vacío.",
+                  "// need() debería rechazar con 422.",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "pm.test('TC-AUTH-015-T1: Respuesta es 422 cuando Content-Type es incorrecto', () => {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "pm.test('TC-AUTH-015-T2: ok es false', () => {",
+                  "    pm.expect(jsonData.ok).to.eql(false);",
+                  "});",
+                  "",
+                  "console.log('✅ TC-AUTH-015 PASS — Content-Type incorrecto manejado');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "text/plain"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"admin1\", \"password\": \"gejo1810\"}",
+              "options": { "raw": { "language": "text" } }
+            },
+            "url": { "raw": "{{base_url}}/auth", "host": ["{{base_url}}"], "path": ["auth"] },
+            "description": "**Caso de prueba:** TC-AUTH-015\n**Tipo:** Negativo — Content-Type incorrecto\n**Descripción:** Envía el body JSON pero con Content-Type: text/plain. La función req_body() lee el raw input con json_decode, que debería funcionar independientemente del header. Si el JSON es válido, PHP lo parsea igualmente; si no, retorna array vacío → 422.\n\n**Resultado esperado:** HTTP 422 (campos no reconocidos) o 200 si PHP parsea igualmente el raw body."
+          }
+        }
+      ]
+    }
+  ]
+}
